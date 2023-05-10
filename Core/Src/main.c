@@ -32,6 +32,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define PLATFORM_LVL 47
+#define JOY1 joystick[1]
+#define JOYSTICK_DELAY 15
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -48,6 +50,10 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 uint16_t joystick[2];
 uint8_t UartMessage[32];
+uint16_t joystick_left = 0;
+uint16_t joystick_right = 0;
+uint8_t platform_length = 20;
+uint8_t platform_pos = 1;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -110,8 +116,8 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  LCD_drawHLine(0, PLATFORM_LVL, 20); // poczatkowe polozenie platformy
-  LCD_refreshArea(0, PLATFORM_LVL, 21, PLATFORM_LVL);
+  LCD_drawHLine(platform_pos, PLATFORM_LVL, platform_length); // poczatkowe polozenie platformy
+  LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos + platform_length, PLATFORM_LVL);
   while (1){
 		 /* for (uint8_t i=1; i<64; i++ ){
 			  LCD_drawHLine(i, 47, 20);
@@ -125,14 +131,33 @@ int main(void)
 			  HAL_Delay(50);
 			  LCD_clrScr();
 		  }*/
-	  	  for (int i = 0; i < 64; i++){
+	  	  /*for (int i = 0; i < 64; i++){
 			  PlatformMoveRight(i, 20);
-			  HAL_Delay(50);
+			  //HAL_Delay(50);
 		  }
 		  for (int i = 64; i > 0; i--){
 			  PlatformMoveLeft(i, 20);
-			  HAL_Delay(50);
+			  //HAL_Delay(50);
+		  }*/
+		  if (JOY1 > 2300){
+			  joystick_left += JOY1;
+			  if (joystick_left > (4030 * JOYSTICK_DELAY) && platform_pos > 0){
+				  PlatformMoveLeft(platform_pos, platform_length);
+				  platform_pos--;
+				  joystick_left = 0;
+			  }
 		  }
+		  if (JOY1 < 1600){
+			  joystick_right += (1899 - JOY1);
+			  if (joystick_right > (3768 * JOYSTICK_DELAY) && (platform_pos + platform_length) < 84){
+				  PlatformMoveRight(platform_pos, platform_length);
+				  platform_pos++;
+				  joystick_right = 0;
+			  }
+		  }
+		  printf("%d\n", JOY1);
+
+
 		  //printf("x:%d\t y:%d\n",joystick[0],joystick[1]);
   }
   {
