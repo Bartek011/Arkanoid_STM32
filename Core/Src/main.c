@@ -110,7 +110,9 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
+  LCD_drawHLine(0, PLATFORM_LVL, 20); // poczatkowe polozenie platformy
+  LCD_refreshArea(0, PLATFORM_LVL, 21, PLATFORM_LVL);
+  while (1){
 		 /* for (uint8_t i=1; i<64; i++ ){
 			  LCD_drawHLine(i, 47, 20);
 			  LCD_refreshArea(i-1, 47, i+21, 47);
@@ -123,15 +125,16 @@ int main(void)
 			  HAL_Delay(50);
 			  LCD_clrScr();
 		  }*/
-	  	  /*for (int i = 0; i < 64; i++){
+	  	  for (int i = 0; i < 64; i++){
 			  PlatformMoveRight(i, 20);
 			  HAL_Delay(50);
 		  }
 		  for (int i = 64; i > 0; i--){
 			  PlatformMoveLeft(i, 20);
 			  HAL_Delay(50);
-		  }*/
-		  printf("x:%d\t y:%d\n",joystick[0],joystick[1]);
+		  }
+		  //printf("x:%d\t y:%d\n",joystick[0],joystick[1]);
+  }
   {
     /* USER CODE END WHILE */
 
