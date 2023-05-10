@@ -474,12 +474,12 @@ int main(void)
  80005c2:	f001 f8d9 	bl	8001778 <HAL_ADC_Start_DMA>
   LCD_init();
  80005c6:	f000 faaf 	bl	8000b28 <LCD_init>
-	 	  }
-	 	  for (int i = 64; i > 0; i--){
-	 		  PlatformMoveLeft(i, 20);
-	 		  HAL_Delay(50);
-	 	  }*/
-	 	  printf("x:%d y:%d\r\n",joystick[0],joystick[1]);
+		  }
+		  for (int i = 64; i > 0; i--){
+			  PlatformMoveLeft(i, 20);
+			  HAL_Delay(50);
+		  }*/
+		  printf("x:%d\t y:%d\n",joystick[0],joystick[1]);
  80005ca:	4b06      	ldr	r3, [pc, #24]	; (80005e4 <main+0x70>)
  80005cc:	881b      	ldrh	r3, [r3, #0]
  80005ce:	4619      	mov	r1, r3
@@ -742,7 +742,7 @@ static void MX_ADC1_Init(void)
 
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_10;
+  sConfig.Channel = ADC_CHANNEL_9;
  8000742:	4b16      	ldr	r3, [pc, #88]	; (800079c <MX_ADC1_Init+0x108>)
  8000744:	607b      	str	r3, [r7, #4]
   sConfig.Rank = ADC_REGULAR_RANK_1;
@@ -805,7 +805,7 @@ static void MX_ADC1_Init(void)
  8000792:	bf00      	nop
  8000794:	2000008c 	.word	0x2000008c
  8000798:	50040000 	.word	0x50040000
- 800079c:	2a000400 	.word	0x2a000400
+ 800079c:	25b00200 	.word	0x25b00200
  80007a0:	2e300800 	.word	0x2e300800
 
 080007a4 <MX_USART2_UART_Init>:
@@ -1646,11 +1646,11 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
  8000cb4:	60fb      	str	r3, [r7, #12]
  8000cb6:	68fb      	ldr	r3, [r7, #12]
     /**ADC1 GPIO Configuration
-    PA5     ------> ADC1_IN10
+    PA4     ------> ADC1_IN9
     PA6     ------> ADC1_IN11
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_6;
- 8000cb8:	2360      	movs	r3, #96	; 0x60
+    GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_6;
+ 8000cb8:	2350      	movs	r3, #80	; 0x50
  8000cba:	f8c7 309c 	str.w	r3, [r7, #156]	; 0x9c
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG_ADC_CONTROL;
  8000cbe:	230b      	movs	r3, #11

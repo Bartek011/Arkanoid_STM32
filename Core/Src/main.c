@@ -111,32 +111,30 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
+		 /* for (uint8_t i=1; i<64; i++ ){
+			  LCD_drawHLine(i, 47, 20);
+			  LCD_refreshArea(i-1, 47, i+21, 47);
+			  HAL_Delay(50);
+			  LCD_clrScr();
+		  }
+		  for (int i = 63; i > 0; i--){
+			  LCD_drawHLine(i, 47, 20);
+			  LCD_refreshArea(i-1, 47, i+21, 47);
+			  HAL_Delay(50);
+			  LCD_clrScr();
+		  }*/
+	  	  /*for (int i = 0; i < 64; i++){
+			  PlatformMoveRight(i, 20);
+			  HAL_Delay(50);
+		  }
+		  for (int i = 64; i > 0; i--){
+			  PlatformMoveLeft(i, 20);
+			  HAL_Delay(50);
+		  }*/
+		  printf("x:%d\t y:%d\n",joystick[0],joystick[1]);
   {
     /* USER CODE END WHILE */
-	  /*sprintf((char*)UartMessage, "X: %d, Y: %d\n\r", (int)joystick[0], (int)joystick[1]);
-	  UART2_Print(UartMessage);*/
-	  //printf("Hello world!\r\n");
-	  /* for (uint8_t i=1; i<64; i++ ){
-	 		  LCD_drawHLine(i, 47, 20);
-	 		  LCD_refreshArea(i-1, 47, i+21, 47);
-	 		  HAL_Delay(50);
-	 		  LCD_clrScr();
-	 	  }
-	 	  for (int i = 63; i > 0; i--){
-	 		  LCD_drawHLine(i, 47, 20);
-	 		  LCD_refreshArea(i-1, 47, i+21, 47);
-	 		  HAL_Delay(50);
-	 		  LCD_clrScr();
-	 	  }*/
-	 	  /*for (int i = 0; i < 64; i++){
-	 		  PlatformMoveRight(i, 20);
-	 		  HAL_Delay(50);
-	 	  }
-	 	  for (int i = 64; i > 0; i--){
-	 		  PlatformMoveLeft(i, 20);
-	 		  HAL_Delay(50);
-	 	  }*/
-	 	  printf("x:%d y:%d\r\n",joystick[0],joystick[1]);
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -242,7 +240,7 @@ static void MX_ADC1_Init(void)
 
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_10;
+  sConfig.Channel = ADC_CHANNEL_9;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
