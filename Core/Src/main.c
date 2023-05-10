@@ -105,6 +105,7 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   HAL_ADC_Start_DMA(&hadc1, joystick, 2);
+  LCD_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -114,7 +115,28 @@ int main(void)
     /* USER CODE END WHILE */
 	  /*sprintf((char*)UartMessage, "X: %d, Y: %d\n\r", (int)joystick[0], (int)joystick[1]);
 	  UART2_Print(UartMessage);*/
-	  printf("Hello world!\r\n");
+	  //printf("Hello world!\r\n");
+	  /* for (uint8_t i=1; i<64; i++ ){
+	 		  LCD_drawHLine(i, 47, 20);
+	 		  LCD_refreshArea(i-1, 47, i+21, 47);
+	 		  HAL_Delay(50);
+	 		  LCD_clrScr();
+	 	  }
+	 	  for (int i = 63; i > 0; i--){
+	 		  LCD_drawHLine(i, 47, 20);
+	 		  LCD_refreshArea(i-1, 47, i+21, 47);
+	 		  HAL_Delay(50);
+	 		  LCD_clrScr();
+	 	  }*/
+	 	  /*for (int i = 0; i < 64; i++){
+	 		  PlatformMoveRight(i, 20);
+	 		  HAL_Delay(50);
+	 	  }
+	 	  for (int i = 64; i > 0; i--){
+	 		  PlatformMoveLeft(i, 20);
+	 		  HAL_Delay(50);
+	 	  }*/
+	 	  printf("x:%d y:%d\r\n",joystick[0],joystick[1]);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
