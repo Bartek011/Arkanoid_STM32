@@ -34,34 +34,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := PongGameProject
+BUILD_ARTIFACT_NAME := ArkanoidProject
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-PongGameProject.elf \
+ArkanoidProject.elf \
 
 MAP_FILES += \
-PongGameProject.map \
+ArkanoidProject.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-PongGameProject.list \
+ArkanoidProject.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: PongGameProject.elf secondary-outputs
+main-build: ArkanoidProject.elf secondary-outputs
 
 # Tool invocations
-PongGameProject.elf PongGameProject.map: $(OBJS) $(USER_OBJS) D:\stm32\PongGameProject\STM32L476RGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "PongGameProject.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\stm32\PongGameProject\STM32L476RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="PongGameProject.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+ArkanoidProject.elf ArkanoidProject.map: $(OBJS) $(USER_OBJS) D:\stm32\PongGameProject\STM32L476RGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "ArkanoidProject.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\stm32\PongGameProject\STM32L476RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="ArkanoidProject.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -70,14 +70,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-PongGameProject.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "PongGameProject.list"
+ArkanoidProject.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "ArkanoidProject.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) PongGameProject.elf PongGameProject.list PongGameProject.map default.size.stdout
+	-$(RM) ArkanoidProject.elf ArkanoidProject.list ArkanoidProject.map default.size.stdout
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)
