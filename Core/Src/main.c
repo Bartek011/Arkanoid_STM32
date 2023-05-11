@@ -145,7 +145,7 @@ int main(void)
 			  PlatformMoveLeft(i, 20);
 			  //HAL_Delay(50);
 		  }*/
-		  if (JOY1 > 2300){
+		  /*if (JOY1 > 2300){
 			  joystick_left += JOY1;
 			  if (joystick_left > (4030 * JOYSTICK_DELAY) && platform_pos > 0){
 				  PlatformMoveLeft(platform_pos, platform_length);
@@ -160,7 +160,7 @@ int main(void)
 				  platform_pos++;
 				  joystick_right = 0;
 			  }
-		  }
+		  }*/
 		  printf("%d\n", JOY1);
 
 
@@ -320,7 +320,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 7999;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 9999;
+  htim3.Init.Period = 332;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -443,7 +443,7 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 static void PlatformMoveRight(int startPoint, int length){
-	LCD_setPixel(startPoint, PLATFORM_LVL, 0); // zgaś lewy skrajny pxl
+	LCD_setPixel(startPoint, PLATFORM_LVL, 0); // zgas lewy skrajny pxl
 	LCD_refreshArea(startPoint, PLATFORM_LVL, startPoint, PLATFORM_LVL);
 	LCD_setPixel(startPoint+length+1, PLATFORM_LVL, 1); // zapal prawy skrajny pxl
 	LCD_refreshArea(startPoint+length+1, PLATFORM_LVL, startPoint+length+1, PLATFORM_LVL);
@@ -466,7 +466,14 @@ int __io_putchar(int ch)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim == &htim3) {
-    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	  if (JOY1 > 2300 && platform_pos > 0){
+		  PlatformMoveLeft(platform_pos, platform_length);
+		  platform_pos--;
+	  }
+  	  if (JOY1 < 1600 && platform_pos + platform_length < 84){
+  		  PlatformMoveRight(platform_pos, platform_length);
+  		  platform_pos++;
+  	  }
   }
 }
 /* USER CODE END 4 */
