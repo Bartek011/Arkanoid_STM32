@@ -344,3 +344,20 @@ void LCD_drawRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
   LCD_drawLine(x2, y1, x2, y2);
   LCD_drawLine(x1, y2, x2, y2);
 }
+/*	@brief Drawns a ball 2x2pxl
+ * @param startX: starting point on the x-axis
+ * @param startY: starting point on the y-axis
+ * @param mode: Color
+ * */
+void LCD_drawBall(uint8_t startX, uint8_t startY, bool mode){
+	LCD_setPixel(startX, startY, mode);
+	LCD_setPixel(startX+1, startY, mode);
+	LCD_setPixel(startX-1, startY, mode);
+	LCD_setPixel(startX, startY+1, mode);
+	LCD_setPixel(startX, startY-1, mode);
+	LCD_setPixel(startX+1, startY+1, mode);
+	LCD_setPixel(startX-1, startY-1, mode);
+	LCD_setPixel(startX+1, startY-1, mode);
+	LCD_setPixel(startX-1, startY+1, mode);
+	LCD_refreshArea(startX-1, startY-1, startX+1, startY+1);
+}

@@ -46,6 +46,7 @@ ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart2;
 
@@ -56,6 +57,8 @@ uint16_t joystick_left = 0;
 uint16_t joystick_right = 0;
 uint8_t platform_length = 20;
 uint8_t platform_pos = 1;
+uint8_t ball_pos_x = 80;
+uint8_t ball_pos_y = 40;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -65,11 +68,32 @@ static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 static void PlatformMoveRight(int startPoint, int length);
 static void PlatformMoveLeft(int startPoint, int length);
+static void BallMoveLeftUp(int x, int y);
 int __io_putchar(int ch); //debug uart
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+	if (htim == &htim4){
+		  //HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		  if (ball_pos_x <= 1 || ball_pos_y <= 1){
+			  ball_pos_x = 80;
+			  ball_pos_y = 40;
+		  }
+		  BallMoveLeftUp(ball_pos_x, ball_pos_y);
+	  }
+  if (htim == &htim3) {
+	  if (JOY1 > 2300 && platform_pos > 0){
+		  PlatformMoveLeft(platform_pos, platform_length);
+		  platform_pos--;
+	  }
+  	  if (JOY1 < 1600 && platform_pos + platform_length < 84){
+  		  PlatformMoveRight(platform_pos, platform_length);
+  		  platform_pos++;
+  	  }
+  }
+};
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -114,8 +138,12 @@ int main(void)
   MX_USART2_UART_Init();
   MX_ADC1_Init();
   MX_TIM3_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+  //HAL_TIM_Base_Init(&htim3);
+  //HAL_TIM_Base_Init(&htim6);
   HAL_TIM_Base_Start_IT(&htim3);
+  HAL_TIM_Base_Start_IT(&htim4);
   HAL_ADC_Start_DMA(&hadc1, joystick, 2);
   LCD_init();
   /* USER CODE END 2 */
@@ -125,6 +153,7 @@ int main(void)
   LCD_drawHLine(platform_pos, PLATFORM_LVL, platform_length); // poczatkowe polozenie platformy
   LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos + platform_length, PLATFORM_LVL);
   while (1){
+	 //LCD_drawBall(20, 20,1);
 		 /* for (uint8_t i=1; i<64; i++ ){
 			  LCD_drawHLine(i, 47, 20);
 			  LCD_refreshArea(i-1, 47, i+21, 47);
@@ -345,6 +374,51 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 7999;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 666;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -454,6 +528,16 @@ static void PlatformMoveLeft(int startPoint, int length){
 	LCD_setPixel(startPoint-1, PLATFORM_LVL, 1); // zapal lewy skrajny pxl
 	LCD_refreshArea(startPoint-1, PLATFORM_LVL, startPoint+length+1, PLATFORM_LVL);
 }
+static void BallMoveLeftUp(int x, int y)
+{
+	int *newX = &ball_pos_x;
+	int *newY = &ball_pos_y;
+	LCD_drawBall(x, y, 1);
+		LCD_drawBall(x, y, 0);
+	LCD_drawBall(x-1, y-1, 1);
+	*newX -= 1;
+	*newY -=1;
+}
 int __io_putchar(int ch)
 {
 	if (ch == '\n') {
@@ -463,19 +547,7 @@ int __io_putchar(int ch)
 	HAL_UART_Transmit(&huart2, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
 	return 1;
 }
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  if (htim == &htim3) {
-	  if (JOY1 > 2300 && platform_pos > 0){
-		  PlatformMoveLeft(platform_pos, platform_length);
-		  platform_pos--;
-	  }
-  	  if (JOY1 < 1600 && platform_pos + platform_length < 84){
-  		  PlatformMoveRight(platform_pos, platform_length);
-  		  platform_pos++;
-  	  }
-  }
-}
+
 /* USER CODE END 4 */
 
 /**
