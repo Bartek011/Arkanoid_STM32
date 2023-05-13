@@ -62,7 +62,6 @@ uint8_t ball_pos_x = 42;
 uint8_t ball_pos_y = 24;
 int8_t ball_dir_x = 1;
 int8_t ball_dir_y = 1;
-uint8_t testowa = 0;
 bool joystick_flag = false;
 /* USER CODE END PV */
 
@@ -149,10 +148,18 @@ int main(void)
 		  ball_dir_x = 1;
 	  if (ball_pos_y - 1 <= 0)
 		  ball_dir_y = -1;
-	  else if (ball_pos_y + 1 > 46)
+	  /*if (ball_pos_y + 1 > 46)
+		  ball_dir_y = 1;*/
+	  if (ball_pos_y + 1 > 45 && (ball_pos_x >= platform_pos && ball_pos_x <= (platform_pos + platform_length))){
 		  ball_dir_y = 1;
-	  //printf("x:%d\t y:%d\t dir_x:%d\t dir_y:%d\n", ball_pos_x, ball_pos_y,ball_dir_x, ball_dir_y);
-	  printf("%d\n",(platform_pos + platform_length)/2);
+		  if (ball_pos_x > (platform_pos + (platform_length/2)))
+			  ball_dir_x = 1;
+		  else if (ball_pos_x <= (platform_pos + (platform_length/2)))
+			  ball_dir_x = -1;
+	  }
+
+
+	  //printf("%d\n",(platform_pos + platform_length)/2);
 
   }
   {
@@ -480,7 +487,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(JOYSTICK_BUTTON_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 8, 0);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 10, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 9, 0);
@@ -547,20 +554,22 @@ int __io_putchar(int ch){
 }
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if (htim == &htim4){
-
-		/*if (ball_dir_x > 0 && ball_dir_y > 0)
-			BallMoveRightUp(ball_pos_x, ball_pos_y);
-		if (ball_dir_x  < 0 && ball_dir_y > 0)
-			BallMoveLeftUp(ball_pos_x, ball_pos_y);
-		if (ball_dir_x > 0 && ball_dir_y < 0)
-			BallMoveRightDown(ball_pos_x, ball_pos_y);
-		if (ball_dir_x < 0 && ball_dir_y < 0)
-			BallMoveLeftDown(ball_pos_x, ball_pos_y);*/
-
+		if(joystick_flag == true){
+			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+			if (ball_dir_x > 0 && ball_dir_y > 0)
+				BallMoveRightUp(ball_pos_x, ball_pos_y);
+			if (ball_dir_x  < 0 && ball_dir_y > 0)
+				BallMoveLeftUp(ball_pos_x, ball_pos_y);
+			if (ball_dir_x > 0 && ball_dir_y < 0)
+				BallMoveRightDown(ball_pos_x, ball_pos_y);
+			if (ball_dir_x < 0 && ball_dir_y < 0)
+				BallMoveLeftDown(ball_pos_x, ball_pos_y);
+		}
+		printf("x:%d\t y:%d\t dir_x:%d\t dir_y:%d\n", ball_pos_x, ball_pos_y,ball_dir_x, ball_dir_y);
 	  }
   if (htim == &htim3) {
-	  int* ball_pos_x_pointer = &ball_pos_x;
-	  int* ball_pos_y_pointer = &ball_pos_y;
+	  //int* ball_pos_x_pointer = &ball_pos_x;
+	  //int* ball_pos_y_pointer = &ball_pos_y;
 	  if (JOY1 > 2300 && platform_pos > 0){
 		  PlatformMoveLeft(platform_pos, platform_length);
 		  platform_pos--;
@@ -570,11 +579,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   		  platform_pos++;
   	  }
   	  if (joystick_flag == false){
-  		  /*Rysowanie pilki przed startem gry */
-  		  *ball_pos_x_pointer = platform_pos + (platform_length/2);
-  		LCD_drawBall(ball_pos_x-1, PLATFORM_LVL-2, 0);
-  		LCD_drawBall(ball_pos_x+1, PLATFORM_LVL-2, 0);
-  		LCD_drawBall(ball_pos_x, PLATFORM_LVL-2, 1);
+  		  //Rysowanie pilki przed startem gry
+  		  ball_pos_x = platform_pos + (platform_length/2);
+  		  ball_pos_y = PLATFORM_LVL-2;
+  		LCD_drawBall(ball_pos_x-1, ball_pos_y, 0);
+  		LCD_drawBall(ball_pos_x+1, ball_pos_y, 0);
+  		LCD_drawBall(ball_pos_x, ball_pos_y, 1);
   	  }
   }
 }
