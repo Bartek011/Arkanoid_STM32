@@ -78,8 +78,8 @@ void LCD_init(){
   HAL_GPIO_WritePin(lcd_gpio.RSTPORT, lcd_gpio.RSTPIN, GPIO_PIN_SET);
   LCD_write(0x21, LCD_COMMAND); //LCD extended commands.
   LCD_write(0xB8, LCD_COMMAND); //set LCD Vop(Contrast).
-  LCD_write(0x04, LCD_COMMAND); //set temp coefficent.
-  LCD_write(0x14, LCD_COMMAND); //LCD bias mode 1:40.
+  LCD_write(0x02, LCD_COMMAND); //set temp coefficent, default 0x04.
+  LCD_write(0x14, LCD_COMMAND); //LCD bias mode 1:40, default 0x14.
   LCD_write(0x20, LCD_COMMAND); //LCD basic commands.
   LCD_write(LCD_DISPLAY_NORMAL, LCD_COMMAND); //LCD normal.
   LCD_clrScr();
@@ -344,7 +344,7 @@ void LCD_drawRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
   LCD_drawLine(x2, y1, x2, y2);
   LCD_drawLine(x1, y2, x2, y2);
 }
-/*	@brief Drawns a ball 2x2pxl
+/*	@brief Drawns a ball 3x3pxl
  * @param startX: starting point on the x-axis
  * @param startY: starting point on the y-axis
  * @param mode: Color

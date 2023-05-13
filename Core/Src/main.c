@@ -74,26 +74,7 @@ static void PlatformMoveRight(int startPoint, int length);
 static void PlatformMoveLeft(int startPoint, int length);
 static void BallMoveLeftUp(int x, int y);
 int __io_putchar(int ch); //debug uart
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	if (htim == &htim4){
-		  //HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-		  if (ball_pos_x <= 1 || ball_pos_y <= 1){
-			  ball_pos_x = 80;
-			  ball_pos_y = 40;
-		  }
-		  BallMoveLeftUp(ball_pos_x, ball_pos_y);
-	  }
-  if (htim == &htim3) {
-	  if (JOY1 > 2300 && platform_pos > 0){
-		  PlatformMoveLeft(platform_pos, platform_length);
-		  platform_pos--;
-	  }
-  	  if (JOY1 < 1600 && platform_pos + platform_length < 84){
-  		  PlatformMoveRight(platform_pos, platform_length);
-  		  platform_pos++;
-  	  }
-  }
-};
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -528,18 +509,16 @@ static void PlatformMoveLeft(int startPoint, int length){
 	LCD_setPixel(startPoint-1, PLATFORM_LVL, 1); // zapal lewy skrajny pxl
 	LCD_refreshArea(startPoint-1, PLATFORM_LVL, startPoint+length+1, PLATFORM_LVL);
 }
-static void BallMoveLeftUp(int x, int y)
-{
+static void BallMoveLeftUp(int x, int y){
 	int *newX = &ball_pos_x;
 	int *newY = &ball_pos_y;
 	LCD_drawBall(x, y, 1);
-		LCD_drawBall(x, y, 0);
+	LCD_drawBall(x, y, 0);
 	LCD_drawBall(x-1, y-1, 1);
 	*newX -= 1;
 	*newY -=1;
 }
-int __io_putchar(int ch)
-{
+int __io_putchar(int ch){
 	if (ch == '\n') {
 		uint8_t ch2 = '\r';
 		HAL_UART_Transmit(&huart2, &ch2, 1, HAL_MAX_DELAY);
@@ -547,6 +526,29 @@ int __io_putchar(int ch)
 	HAL_UART_Transmit(&huart2, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
 	return 1;
 }
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+	if (htim == &htim4){
+		  //HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		  if (ball_pos_x <= 1 || ball_pos_y <= 1){
+			  LCD_drawBall(ball_pos_x, ball_pos_y, 0);
+			  ball_pos_x = 80;
+			  ball_pos_y = 40;
+		  }
+		  BallMoveLeftUp(ball_pos_x, ball_pos_y);
+
+	  }
+  if (htim == &htim3) {
+	  if (JOY1 > 2300 && platform_pos > 0){
+		  PlatformMoveLeft(platform_pos, platform_length);
+		  platform_pos--;
+	  }
+  	  if (JOY1 < 1600 && platform_pos + platform_length < 84){
+  		  PlatformMoveRight(platform_pos, platform_length);
+  		  platform_pos++;
+  	  }
+  }
+};
+/*
 
 /* USER CODE END 4 */
 
