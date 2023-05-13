@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,7 +61,9 @@ uint8_t platform_pos = 1;
 uint8_t ball_pos_x = 42;
 uint8_t ball_pos_y = 24;
 int8_t ball_dir_x = 1;
-int8_t ball_dir_y = -1;
+int8_t ball_dir_y = 1;
+uint8_t testowa = 0;
+bool joystick_flag = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -77,6 +80,7 @@ static void PlatformMoveLeft(int startPoint, int length);
 static void BallMoveLeftUp(int x, int y);
 int __io_putchar(int ch); //debug uart
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -133,8 +137,11 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  LCD_drawBall((platform_pos + platform_length)/2, PLATFORM_LVL-2, 1);
   LCD_drawHLine(platform_pos, PLATFORM_LVL, platform_length); // poczatkowe polozenie platformy
   LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos + platform_length, PLATFORM_LVL);
+  //LCD_drawBall((platform_pos + platform_length)/2, PLATFORM_LVL-2, 1);
+
   while (1){
 	  if (ball_pos_x + 1 > 82)
 		  ball_dir_x = -1;
@@ -144,8 +151,8 @@ int main(void)
 		  ball_dir_y = -1;
 	  else if (ball_pos_y + 1 > 46)
 		  ball_dir_y = 1;
-
-
+	  //printf("x:%d\t y:%d\t dir_x:%d\t dir_y:%d\n", ball_pos_x, ball_pos_y,ball_dir_x, ball_dir_y);
+	  printf("%d\n",(platform_pos + platform_length)/2);
 
   }
   {
@@ -347,7 +354,7 @@ static void MX_TIM4_Init(void)
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 7999;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 4000;
+  htim4.Init.Period = 1500;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
@@ -466,6 +473,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : JOYSTICK_BUTTON_Pin */
+  GPIO_InitStruct.Pin = JOYSTICK_BUTTON_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(JOYSTICK_BUTTON_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 8, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 9, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
@@ -528,24 +548,19 @@ int __io_putchar(int ch){
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if (htim == &htim4){
 
-		  /*if (ball_pos_x <= 1 || ball_pos_y <= 1){
-			  LCD_drawBall(ball_pos_x, ball_pos_y, 0);
-			  ball_pos_x = 80;
-			  ball_pos_y = 40;
-		  }
-		  BallMoveLeftUp(ball_pos_x, ball_pos_y);*/
-		printf("x:%d\t y:%d\t dir_x:%d\t dir_y:%d\n", ball_pos_x, ball_pos_y,ball_dir_x, ball_dir_y);
-		if (ball_dir_x > 0 && ball_dir_y > 0)
+		/*if (ball_dir_x > 0 && ball_dir_y > 0)
 			BallMoveRightUp(ball_pos_x, ball_pos_y);
 		if (ball_dir_x  < 0 && ball_dir_y > 0)
 			BallMoveLeftUp(ball_pos_x, ball_pos_y);
 		if (ball_dir_x > 0 && ball_dir_y < 0)
 			BallMoveRightDown(ball_pos_x, ball_pos_y);
 		if (ball_dir_x < 0 && ball_dir_y < 0)
-			BallMoveLeftDown(ball_pos_x, ball_pos_y);
+			BallMoveLeftDown(ball_pos_x, ball_pos_y);*/
 
 	  }
   if (htim == &htim3) {
+	  int* ball_pos_x_pointer = &ball_pos_x;
+	  int* ball_pos_y_pointer = &ball_pos_y;
 	  if (JOY1 > 2300 && platform_pos > 0){
 		  PlatformMoveLeft(platform_pos, platform_length);
 		  platform_pos--;
@@ -554,9 +569,20 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   		  PlatformMoveRight(platform_pos, platform_length);
   		  platform_pos++;
   	  }
+  	  if (joystick_flag == false){
+  		  /*Rysowanie pilki przed startem gry */
+  		  *ball_pos_x_pointer = platform_pos + (platform_length/2);
+  		LCD_drawBall(ball_pos_x-1, PLATFORM_LVL-2, 0);
+  		LCD_drawBall(ball_pos_x+1, PLATFORM_LVL-2, 0);
+  		LCD_drawBall(ball_pos_x, PLATFORM_LVL-2, 1);
+  	  }
   }
-};
-/*
+}
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if(GPIO_Pin == JOYSTICK_BUTTON_Pin){
+		joystick_flag = true;
+	}
+}
 
 /* USER CODE END 4 */
 

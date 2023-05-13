@@ -81,7 +81,8 @@ void LCD_init(){
   LCD_write(0x02, LCD_COMMAND); //set temp coefficent, default 0x04.
   LCD_write(0x14, LCD_COMMAND); //LCD bias mode 1:40, default 0x14.
   LCD_write(0x20, LCD_COMMAND); //LCD basic commands.
-  LCD_write(LCD_DISPLAY_NORMAL, LCD_COMMAND); //LCD normal.
+  //LCD_write(LCD_DISPLAY_NORMAL, LCD_COMMAND); //LCD normal.
+  LCD_write(0x0C, LCD_COMMAND);
   LCD_clrScr();
   lcd.inverttext = false;
 }
@@ -178,7 +179,7 @@ void LCD_refreshScr(){
  */
 void LCD_refreshArea(uint8_t xmin, uint8_t ymin, uint8_t xmax, uint8_t ymax){
   for(int i = 0; i < 6; i++){
-    if(i * 8 > ymax){
+	if(i * 8 > ymax){
       break;
     }
     //LCD_goXY(xmin, i);
@@ -360,4 +361,25 @@ void LCD_drawBall(uint8_t startX, uint8_t startY, bool mode){
 	LCD_setPixel(startX+1, startY-1, mode);
 	LCD_setPixel(startX-1, startY+1, mode);
 	LCD_refreshArea(startX-1, startY-1, startX+1, startY+1);
+}
+/*TODO*/
+void LCD_drawPixel(uint8_t x, uint8_t y, bool pixel){
+  if(x >= LCD_WIDTH)
+    x = LCD_WIDTH - 1;
+  if(y >= LCD_HEIGHT)
+    y = LCD_HEIGHT - 1;
+
+  if(pixel != false){
+    lcd.buffer[x + (y / 8) * LCD_WIDTH] |= 1 << (y % 8);
+  }
+  else{
+    lcd.buffer[x + (y / 8) * LCD_WIDTH] &= ~(1 << (y % 8));
+  }
+  if (y<8)
+	  LCD_write(LCD_SETYADDR | 0, LCD_COMMAND);
+  else
+	  LCD_write(LCD_SETYADDR | y/8, LCD_COMMAND);
+
+  LCD_write(LCD_SETXADDR | x, LCD_COMMAND);
+
 }
