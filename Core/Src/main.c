@@ -57,8 +57,10 @@ uint16_t joystick_left = 0;
 uint16_t joystick_right = 0;
 uint8_t platform_length = 20;
 uint8_t platform_pos = 1;
-uint8_t ball_pos_x = 80;
-uint8_t ball_pos_y = 40;
+uint8_t ball_pos_x = 42;
+uint8_t ball_pos_y = 24;
+int8_t ball_dir_x = 1;
+int8_t ball_dir_y = -1;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -134,47 +136,17 @@ int main(void)
   LCD_drawHLine(platform_pos, PLATFORM_LVL, platform_length); // poczatkowe polozenie platformy
   LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos + platform_length, PLATFORM_LVL);
   while (1){
-	 //LCD_drawBall(20, 20,1);
-		 /* for (uint8_t i=1; i<64; i++ ){
-			  LCD_drawHLine(i, 47, 20);
-			  LCD_refreshArea(i-1, 47, i+21, 47);
-			  HAL_Delay(50);
-			  LCD_clrScr();
-		  }
-		  for (int i = 63; i > 0; i--){
-			  LCD_drawHLine(i, 47, 20);
-			  LCD_refreshArea(i-1, 47, i+21, 47);
-			  HAL_Delay(50);
-			  LCD_clrScr();
-		  }*/
-	  	  /*for (int i = 0; i < 64; i++){
-			  PlatformMoveRight(i, 20);
-			  //HAL_Delay(50);
-		  }
-		  for (int i = 64; i > 0; i--){
-			  PlatformMoveLeft(i, 20);
-			  //HAL_Delay(50);
-		  }*/
-		  /*if (JOY1 > 2300){
-			  joystick_left += JOY1;
-			  if (joystick_left > (4030 * JOYSTICK_DELAY) && platform_pos > 0){
-				  PlatformMoveLeft(platform_pos, platform_length);
-				  platform_pos--;
-				  joystick_left = 0;
-			  }
-		  }
-		  if (JOY1 < 1600){
-			  joystick_right += (1899 - JOY1);
-			  if (joystick_right > (3768 * JOYSTICK_DELAY) && (platform_pos + platform_length) < 84){
-				  PlatformMoveRight(platform_pos, platform_length);
-				  platform_pos++;
-				  joystick_right = 0;
-			  }
-		  }*/
-		  printf("%d\n", JOY1);
+	  if (ball_pos_x + 1 > 82)
+		  ball_dir_x = -1;
+	  else if (ball_pos_x - 1 <= 0)
+		  ball_dir_x = 1;
+	  if (ball_pos_y - 1 <= 0)
+		  ball_dir_y = -1;
+	  else if (ball_pos_y + 1 > 46)
+		  ball_dir_y = 1;
 
 
-		  //printf("x:%d\t y:%d\n",joystick[0],joystick[1]);
+
   }
   {
     /* USER CODE END WHILE */
@@ -375,7 +347,7 @@ static void MX_TIM4_Init(void)
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 7999;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 666;
+  htim4.Init.Period = 4000;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
@@ -518,6 +490,33 @@ static void BallMoveLeftUp(int x, int y){
 	*newX -= 1;
 	*newY -=1;
 }
+static void BallMoveLeftDown(int x, int y){
+	int *newX = &ball_pos_x;
+	int *newY = &ball_pos_y;
+	LCD_drawBall(x, y, 1);
+	LCD_drawBall(x, y, 0);
+	LCD_drawBall(x-1, y+1, 1);
+	*newX -= 1;
+	*newY +=1;
+}
+static void BallMoveRightUp(int x, int y){
+	int *newX = &ball_pos_x;
+	int *newY = &ball_pos_y;
+	LCD_drawBall(x, y, 1);
+	LCD_drawBall(x, y, 0);
+	LCD_drawBall(x+1, y-1, 1);
+	*newX += 1;
+	*newY -=1;
+}
+static void BallMoveRightDown(int x, int y){
+	int *newX = &ball_pos_x;
+	int *newY = &ball_pos_y;
+	LCD_drawBall(x, y, 1);
+	LCD_drawBall(x, y, 0);
+	LCD_drawBall(x+1, y+1, 1);
+	*newX += 1;
+	*newY +=1;
+}
 int __io_putchar(int ch){
 	if (ch == '\n') {
 		uint8_t ch2 = '\r';
@@ -528,13 +527,22 @@ int __io_putchar(int ch){
 }
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if (htim == &htim4){
-		  //HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-		  if (ball_pos_x <= 1 || ball_pos_y <= 1){
+
+		  /*if (ball_pos_x <= 1 || ball_pos_y <= 1){
 			  LCD_drawBall(ball_pos_x, ball_pos_y, 0);
 			  ball_pos_x = 80;
 			  ball_pos_y = 40;
 		  }
-		  BallMoveLeftUp(ball_pos_x, ball_pos_y);
+		  BallMoveLeftUp(ball_pos_x, ball_pos_y);*/
+		printf("x:%d\t y:%d\t dir_x:%d\t dir_y:%d\n", ball_pos_x, ball_pos_y,ball_dir_x, ball_dir_y);
+		if (ball_dir_x > 0 && ball_dir_y > 0)
+			BallMoveRightUp(ball_pos_x, ball_pos_y);
+		if (ball_dir_x  < 0 && ball_dir_y > 0)
+			BallMoveLeftUp(ball_pos_x, ball_pos_y);
+		if (ball_dir_x > 0 && ball_dir_y < 0)
+			BallMoveRightDown(ball_pos_x, ball_pos_y);
+		if (ball_dir_x < 0 && ball_dir_y < 0)
+			BallMoveLeftDown(ball_pos_x, ball_pos_y);
 
 	  }
   if (htim == &htim3) {
