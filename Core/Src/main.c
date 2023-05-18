@@ -160,42 +160,26 @@ int main(void)
   for (int row = 0; row < numRows; row++) {
     for (int col = 0; col < numBlocksPerRow; col++) {
       blocks[row][col] = 1; // Wszystkie bloczki są widoczne na początku
+      int blockX = col * (blockWidth + gap);
+      int blockY = row * (blockHeight + gap) + topOffset;
+		LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
     }
   }
-  //Narysuj plansze bloczków
-  for (int row = 0; row < numRows; row++) {
-    for (int col = 0; col < numBlocksPerRow; col++) {
-      if (blocks[row][col] == 1) {
-        int blockX = col * (blockWidth + gap);
-        int blockY = row * (blockHeight + gap) + topOffset;
 
-        // Sprawdź kolizję piłki z bloczkiem
-        //if (ballX + 1 >= blockX && ballX <= blockX + blockWidth && ballY + 1 >= blockY && ballY <= blockY + blockHeight) {
-          // Odbicie od bloczka - zmień kierunek piłki
-          //ballSpeedY *= -1;
-
-          // Usuń bloczek
-          //blocks[row][col] == 0;
-        //}
-
-        // Wyrysuj bloczek
-        LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-        //display.fillRect(blockX, blockY, blockWidth, blockHeight, BLACK);
-
-      }
-    }
-  }
   //LCD_drawFilledRectangle(1, 10, 20, 1);
   LCD_refreshScr();
   while (1){
+	  //Odbicia od ścian
 	  if (ball_pos_x + 1 > 82)
 		  ball_dir_x = -1;
 	  else if (ball_pos_x - 1 <= 0)
 		  ball_dir_x = 1;
 	  if (ball_pos_y - 1 <= 0)
 		  ball_dir_y = -1;
+	  // Odbicie od podłogi
 	  /*if (ball_pos_y + 1 > 46)
 		  ball_dir_y = 1;*/
+	  //Odbicia od platformy
 	  if (ball_pos_y + 1 > 45 && (ball_pos_x >= platform_pos && ball_pos_x <= (platform_pos + platform_length))){
 		  ball_dir_y = 1;
 		  if (ball_pos_x > (platform_pos + (platform_length/2)))
@@ -203,6 +187,34 @@ int main(void)
 		  else if (ball_pos_x <= (platform_pos + (platform_length/2)))
 			  ball_dir_x = -1;
 	  }
+	  for (int row = 0; row < numRows; row++) {
+	      for (int col = 0; col < numBlocksPerRow; col++) {
+	        if (blocks[row][col] == 1) {
+	          int blockX = col * (blockWidth + gap);
+	          int blockY = row * (blockHeight + gap) + topOffset;
+
+	          // Sprawdź kolizję piłki z bloczkiem
+	          //if (ball_pos_x + 1 >= blockX && )
+	          if (ball_pos_x + 1 >= blockX && ball_pos_x <= blockX + blockWidth && ball_pos_y - 1 <= blockY && ball_pos_y >= blockY - blockHeight) {
+	            // Odbicie od bloczka - zmień kierunek piłki
+	            ball_dir_x *= -1;
+	            ball_dir_y *= 1;
+
+	            // Usuń bloczek
+	            blocks[row][col] = 0;
+	            LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+	          }
+
+	          // Wyrysuj bloczek
+	          //LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+	          //display.fillRect(blockX, blockY, blockWidth, blockHeight, BLACK);
+
+	        }
+	      }
+	    }
+	    //LCD_drawFilledRectangle(1, 10, 20, 1);
+	    //LCD_refreshScr();
+
 
 
 	  //printf("%d\n",(platform_pos + platform_length)/2);
@@ -407,7 +419,7 @@ static void MX_TIM4_Init(void)
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 7999;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 1500;
+  htim4.Init.Period = 1000;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
@@ -610,7 +622,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 				BallMoveRightDown(ball_pos_x, ball_pos_y);
 			if (ball_dir_x < 0 && ball_dir_y < 0)
 				BallMoveLeftDown(ball_pos_x, ball_pos_y);
+
 		}
+	  	for (int row = 0; row < numRows; row++) {
+	  		      for (int col = 0; col < numBlocksPerRow; col++) {
+	  		    	 int blockX = col * (blockWidth + gap);
+	  		    	int blockY = row * (blockHeight + gap) + topOffset;
+
+	  		      if (blocks[row][col] == 0) {
+			        	//LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+	  		      }
+	  }
+	}
 		//printf("x:%d\t y:%d\t dir_x:%d\t dir_y:%d\n", ball_pos_x, ball_pos_y,ball_dir_x, ball_dir_y);
 	  }
   if (htim == &htim3) {
@@ -633,7 +656,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   		LCD_drawBall(ball_pos_x+1, ball_pos_y, 0);
   		LCD_drawBall(ball_pos_x, ball_pos_y, 1);
   	  }
-  }
+
+}
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == JOYSTICK_BUTTON_Pin){

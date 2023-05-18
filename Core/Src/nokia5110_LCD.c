@@ -368,13 +368,9 @@ void LCD_drawBall(uint8_t startX, uint8_t startY, bool mode){
 void LCD_drawFilledRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
 	for (int i=y1;i>=y2; i--){
 		for (int j = x1; j<= x2; j++){
-			//printf("%d\t%d\n", i, j);
-
-				LCD_setPixel(j, i, 1);
-
+			LCD_setPixel(j, i, 1);
 		}
 	}
-
 	LCD_refreshArea(x1, y1, x2, y2);
 }
 
@@ -383,31 +379,22 @@ void LCD_drawChequeredRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
 	LCD_drawVLine(x2, y2, abs(y2-y1));
 	LCD_drawHLine(x1, y2, x2-x1);
 	LCD_drawVLine(x1, y2, abs(y2-y1));
-	/*for(; y1 >= y2; y2++){
-		for (; x1 <= x2; x1++){
-			if((x1+y2)%2==0){
-				LCD_setPixel(x1, y2, 1);
-				printf("x: %d\t y:%d\n",x1,y2);
-			}
-		}
-	}*/
 	for (int i=y1;i>=y2; i--){
 		for (int j = x1; j<= x2; j++){
-			//printf("%d\t%d\n", i, j);
 			if((i+j)%2==0){
 				LCD_setPixel(j, i, 1);
 			}
-
 		}
 	}
-	/*for (int i=y1-1; i>y2;i--){
-		for(int j=x1+1; i<x2; i++){
-			if ((i+j)%2==0){
-				LCD_setPixel(i, j, 1);
-			}
+	LCD_refreshArea(x1, y1, x2, y2);
+}
+void LCD_drawEmptyRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
+	for (int i=y1;i>=y2; i--){
+		for (int j = x1; j<= x2; j++){
+			LCD_setPixel(j, i, 0);
 		}
-	}*/
-	//LCD_refreshArea(x1, y1, x2, y2);
+	}
+	LCD_refreshArea(x1-1, y1+1, x2+1, y2-1);
 
 }
 
