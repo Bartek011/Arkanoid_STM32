@@ -340,10 +340,11 @@ void LCD_drawLine(int x1, int y1, int x2, int y2){
  * @param y2: ending point on the y-axis
  */
 void LCD_drawRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
-  LCD_drawLine(x1, y1, x2, y1);
-  LCD_drawLine(x1, y1, x1, y2);
-  LCD_drawLine(x2, y1, x2, y2);
-  LCD_drawLine(x1, y2, x2, y2);
+	LCD_drawHLine(x1, y1, x2-x1);
+	LCD_drawVLine(x2, y2, abs(y2-y1));
+	LCD_drawHLine(x1, y2, x2-x1);
+	LCD_drawVLine(x1, y2, abs(y2-y1));
+	LCD_refreshArea(x1, y1, x2, y2);
 }
 /*	@brief Drawns a ball 3x3pxl
  * @param startX: starting point on the x-axis
@@ -363,23 +364,50 @@ void LCD_drawBall(uint8_t startX, uint8_t startY, bool mode){
 	LCD_refreshArea(startX-1, startY-1, startX+1, startY+1);
 }
 /*TODO*/
-void LCD_drawPixel(uint8_t x, uint8_t y, bool pixel){
-  if(x >= LCD_WIDTH)
-    x = LCD_WIDTH - 1;
-  if(y >= LCD_HEIGHT)
-    y = LCD_HEIGHT - 1;
 
-  if(pixel != false){
-    lcd.buffer[x + (y / 8) * LCD_WIDTH] |= 1 << (y % 8);
-  }
-  else{
-    lcd.buffer[x + (y / 8) * LCD_WIDTH] &= ~(1 << (y % 8));
-  }
-  if (y<8)
-	  LCD_write(LCD_SETYADDR | 0, LCD_COMMAND);
-  else
-	  LCD_write(LCD_SETYADDR | y/8, LCD_COMMAND);
+void LCD_drawFilledRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
+	for (int i=y1;i>=y2; i--){
+		for (int j = x1; j<= x2; j++){
+			//printf("%d\t%d\n", i, j);
 
-  LCD_write(LCD_SETXADDR | x, LCD_COMMAND);
+				LCD_setPixel(j, i, 1);
+
+		}
+	}
+
+	LCD_refreshArea(x1, y1, x2, y2);
+}
+
+void LCD_drawChequeredRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
+	LCD_drawHLine(x1, y1, x2-x1);
+	LCD_drawVLine(x2, y2, abs(y2-y1));
+	LCD_drawHLine(x1, y2, x2-x1);
+	LCD_drawVLine(x1, y2, abs(y2-y1));
+	/*for(; y1 >= y2; y2++){
+		for (; x1 <= x2; x1++){
+			if((x1+y2)%2==0){
+				LCD_setPixel(x1, y2, 1);
+				printf("x: %d\t y:%d\n",x1,y2);
+			}
+		}
+	}*/
+	for (int i=y1;i>=y2; i--){
+		for (int j = x1; j<= x2; j++){
+			//printf("%d\t%d\n", i, j);
+			if((i+j)%2==0){
+				LCD_setPixel(j, i, 1);
+			}
+
+		}
+	}
+	/*for (int i=y1-1; i>y2;i--){
+		for(int j=x1+1; i<x2; i++){
+			if ((i+j)%2==0){
+				LCD_setPixel(i, j, 1);
+			}
+		}
+	}*/
+	//LCD_refreshArea(x1, y1, x2, y2);
 
 }
+

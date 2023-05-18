@@ -34,6 +34,7 @@
 /* USER CODE BEGIN PD */
 #define PLATFORM_LVL 47
 #define JOY1 joystick[1]
+#define JOY0 joystick[0]
 #define JOYSTICK_DELAY 15
 /* USER CODE END PD */
 
@@ -63,6 +64,15 @@ uint8_t ball_pos_y = 24;
 int8_t ball_dir_x = 1;
 int8_t ball_dir_y = 1;
 bool joystick_flag = false;
+
+// Prostokątne bloczki
+uint8_t blockWidth = 10;
+uint8_t blockHeight = 5;
+uint8_t gap = 2; // Przerwa pomiędzy bloczkami
+uint8_t numBlocksPerRow = 7;
+uint8_t numRows = 3;
+uint8_t topOffset = 5; // Odległość od górnej krawędzi ekranu
+uint8_t blocks[3][7]; // Tablica do przechowywania stanu bloczków
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -139,8 +149,44 @@ int main(void)
   LCD_drawBall((platform_pos + platform_length)/2, PLATFORM_LVL-2, 1);
   LCD_drawHLine(platform_pos, PLATFORM_LVL, platform_length); // poczatkowe polozenie platformy
   LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos + platform_length, PLATFORM_LVL);
-  //LCD_drawBall((platform_pos + platform_length)/2, PLATFORM_LVL-2, 1);
+  /*for (int i = 10; i<= 30; i+=11){
 
+  }*/
+//LCD_drawRectangle(10, 20, 20, 15);
+//LCD_drawFilledRectangle(22, 20, 32, 15);
+//LCD_drawChequeredRectangle(34, 20, 44, 15);
+//LCD_refreshScr();
+  // Inicjalizuj stan bloczków
+  for (int row = 0; row < numRows; row++) {
+    for (int col = 0; col < numBlocksPerRow; col++) {
+      blocks[row][col] = 1; // Wszystkie bloczki są widoczne na początku
+    }
+  }
+  //Narysuj plansze bloczków
+  for (int row = 0; row < numRows; row++) {
+    for (int col = 0; col < numBlocksPerRow; col++) {
+      if (blocks[row][col] == 1) {
+        int blockX = col * (blockWidth + gap);
+        int blockY = row * (blockHeight + gap) + topOffset;
+
+        // Sprawdź kolizję piłki z bloczkiem
+        //if (ballX + 1 >= blockX && ballX <= blockX + blockWidth && ballY + 1 >= blockY && ballY <= blockY + blockHeight) {
+          // Odbicie od bloczka - zmień kierunek piłki
+          //ballSpeedY *= -1;
+
+          // Usuń bloczek
+          //blocks[row][col] == 0;
+        //}
+
+        // Wyrysuj bloczek
+        LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+        //display.fillRect(blockX, blockY, blockWidth, blockHeight, BLACK);
+
+      }
+    }
+  }
+  //LCD_drawFilledRectangle(1, 10, 20, 1);
+  LCD_refreshScr();
   while (1){
 	  if (ball_pos_x + 1 > 82)
 		  ball_dir_x = -1;
@@ -565,9 +611,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 			if (ball_dir_x < 0 && ball_dir_y < 0)
 				BallMoveLeftDown(ball_pos_x, ball_pos_y);
 		}
-		printf("x:%d\t y:%d\t dir_x:%d\t dir_y:%d\n", ball_pos_x, ball_pos_y,ball_dir_x, ball_dir_y);
+		//printf("x:%d\t y:%d\t dir_x:%d\t dir_y:%d\n", ball_pos_x, ball_pos_y,ball_dir_x, ball_dir_y);
 	  }
   if (htim == &htim3) {
+	  //printf("%d\n",JOY0);
 	  //int* ball_pos_x_pointer = &ball_pos_x;
 	  //int* ball_pos_y_pointer = &ball_pos_y;
 	  if (JOY1 > 2300 && platform_pos > 0){

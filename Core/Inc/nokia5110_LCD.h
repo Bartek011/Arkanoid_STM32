@@ -128,5 +128,8 @@ void LCD_drawVLine(int x, int y, int l);
 void LCD_drawLine(int x1, int y1, int x2, int y2);
 void LCD_drawRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
 void LCD_drawBall(uint8_t startX, uint8_t startY, bool mode);
-void LCD_drawPixel(uint8_t x, uint8_t y, bool pixel);
+void LCD_drawRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
+void LCD_drawFilledRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
+void LCD_drawChequeredRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
+
 #endif
