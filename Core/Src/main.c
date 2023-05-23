@@ -64,7 +64,7 @@ uint8_t ball_pos_y = 24;
 int8_t ball_dir_x = 1;
 int8_t ball_dir_y = 1;
 bool joystick_flag = false;
-
+uint8_t licznik = 0;
 // Prostokątne bloczki
 uint8_t blockWidth = 10;
 uint8_t blockHeight = 5;
@@ -162,12 +162,11 @@ int main(void)
       blocks[row][col] = 1; // Wszystkie bloczki są widoczne na początku
       int blockX = col * (blockWidth + gap);
       int blockY = row * (blockHeight + gap) + topOffset;
-		LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+		//LCD_drawChequeredRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
     }
   }
 
-  //LCD_drawFilledRectangle(1, 10, 20, 1);
-  LCD_refreshScr();
+  //LCD_refreshScr();
   while (1){
 	  //Odbicia od ścian
 	  if (ball_pos_x + 1 > 82)
@@ -212,9 +211,10 @@ int main(void)
 	        }
 	      }
 	    }
-	    //LCD_drawFilledRectangle(1, 10, 20, 1);
-	    //LCD_refreshScr();
-
+	  LCD_drawFilledRectangle(20, 20, 25, 15);
+	  	 	 HAL_Delay(50);
+	  	 	 LCD_drawEmptyRectangle(20, 20, 25, 15);
+	  	 	HAL_Delay(50);
 
 
 	  //printf("%d\n",(platform_pos + platform_length)/2);
@@ -419,7 +419,7 @@ static void MX_TIM4_Init(void)
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 7999;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 1000;
+  htim4.Init.Period = 1500;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
@@ -626,14 +626,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		}
 	  	for (int row = 0; row < numRows; row++) {
 	  		      for (int col = 0; col < numBlocksPerRow; col++) {
-	  		    	 int blockX = col * (blockWidth + gap);
+	  		    	int blockX = col * (blockWidth + gap);
 	  		    	int blockY = row * (blockHeight + gap) + topOffset;
 
 	  		      if (blocks[row][col] == 0) {
 			        	//LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 	  		      }
-	  }
+	  		      }
 	}
+
 		//printf("x:%d\t y:%d\t dir_x:%d\t dir_y:%d\n", ball_pos_x, ball_pos_y,ball_dir_x, ball_dir_y);
 	  }
   if (htim == &htim3) {
@@ -657,11 +658,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   		LCD_drawBall(ball_pos_x, ball_pos_y, 1);
   	  }
 
-}
+  }
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == JOYSTICK_BUTTON_Pin){
 		joystick_flag = true;
+		//sprawdzenie drgan stykow
+		licznik++;
+		//printf("%d\n",licznik);
+		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 	}
 }
 

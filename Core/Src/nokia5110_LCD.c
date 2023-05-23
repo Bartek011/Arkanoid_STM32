@@ -344,7 +344,7 @@ void LCD_drawRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
 	LCD_drawVLine(x2, y2, abs(y2-y1));
 	LCD_drawHLine(x1, y2, x2-x1);
 	LCD_drawVLine(x1, y2, abs(y2-y1));
-	LCD_refreshArea(x1, y1, x2, y2);
+	LCD_refreshArea(x1, y2, x2, y1);
 }
 /*	@brief Drawns a ball 3x3pxl
  * @param startX: starting point on the x-axis
@@ -371,7 +371,7 @@ void LCD_drawFilledRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
 			LCD_setPixel(j, i, 1);
 		}
 	}
-	LCD_refreshArea(x1, y1, x2, y2);
+	LCD_refreshArea(x1, y2, x2, y1);
 }
 
 void LCD_drawChequeredRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
@@ -386,7 +386,7 @@ void LCD_drawChequeredRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
 			}
 		}
 	}
-	LCD_refreshArea(x1, y1, x2, y2);
+	LCD_refreshArea(x1, y2, x2, y1);
 }
 void LCD_drawEmptyRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
 	for (int i=y1;i>=y2; i--){
@@ -394,7 +394,7 @@ void LCD_drawEmptyRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
 			LCD_setPixel(j, i, 0);
 		}
 	}
-	LCD_refreshArea(x1-1, y1+1, x2+1, y2-1);
+	LCD_refreshArea(x1, y2, x2, y1);
 
 }
 
