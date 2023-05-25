@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -66,13 +67,16 @@ int8_t ball_dir_y = 1;
 bool joystick_flag = false;
 uint8_t licznik = 0;
 // Prostokątne bloczki
-uint8_t blockWidth = 10;
+uint8_t blockWidth = 8;
 uint8_t blockHeight = 5;
 uint8_t gap = 2; // Przerwa pomiędzy bloczkami
 uint8_t numBlocksPerRow = 7;
 uint8_t numRows = 3;
 uint8_t topOffset = 5; // Odległość od górnej krawędzi ekranu
 uint8_t blocks[3][7]; // Tablica do przechowywania stanu bloczków
+
+char score[2];
+uint8_t scoreint = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -165,11 +169,13 @@ int main(void)
 		LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
     }
   }
+  LCD_drawVLine(70, 0, 48);
 
-  //LCD_refreshScr();
+  LCD_refreshScr();
+  LCD_print("00", 72, 0);
   while (1){
 	  //Odbicia od ścian
-	  if (ball_pos_x + 1 > 82)
+	  if (ball_pos_x + 1 > 68)
 		  ball_dir_x = -1;
 	  else if (ball_pos_x - 1 <= 0)
 		  ball_dir_x = 1;
@@ -196,6 +202,15 @@ int main(void)
 	          if ((ball_pos_x + 1) >= blockX && (ball_pos_x - 1) <= (blockX + blockWidth) && (ball_pos_y - 1) <= blockY && (ball_pos_y + 1) >= (blockY - blockHeight)) {
 	            // Usuń bloczek
 	            blocks[row][col] = 0;
+	            //zwieksz wynik o 1
+	            scoreint+=1;
+	            sprintf(score, "%d", scoreint);
+	            if (scoreint < 10){
+	            	LCD_print(score, 78, 0);
+	            }
+	            else{
+	            	LCD_print(score, 72, 0);
+	            }
 	            LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 	            //Wykrycie odbicia od scian - zmien kierunek w osi X
 	            if ((ball_pos_x + 1) == blockX || (ball_pos_x - 1) == blockX + blockWidth){
@@ -636,7 +651,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		  PlatformMoveLeft(platform_pos, platform_length);
 		  platform_pos--;
 	  }
-  	  if (JOY1 < 1600 && platform_pos + platform_length < 84){
+  	  if (JOY1 < 1600 && platform_pos + platform_length < 70){
   		  PlatformMoveRight(platform_pos, platform_length);
   		  platform_pos++;
   	  }
@@ -654,7 +669,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == JOYSTICK_BUTTON_Pin){
 		joystick_flag = true;
-		//sprawdzenie drgan stykow
+
 		licznik++;
 		//printf("%d\n",licznik);
 		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
