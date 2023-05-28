@@ -48,6 +48,8 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
+RNG_HandleTypeDef hrng;
+
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
@@ -75,20 +77,31 @@ uint8_t numBlocksPerRow = 7;
 uint8_t numRows = 3;
 uint8_t topOffset = 5; // Odległość od górnej krawędzi ekranu
 uint8_t blocks[3][7]; // Tablica do przechowywania stanu bloczków
+uint8_t numerBloczka = 0;
 
 //Wynik
 char score[3];
 uint8_t scoreint = 0;
 
 //Menu
-uint8_t screen = 1;
-uint8_t temp_screen = 1;
+uint8_t screen = 0;
+uint8_t temp_screen = 0;
 bool initGame = false;
 bool startGame = false;
+
+//Konfiguracja gry
+uint8_t plansza = 0;
+/* plaszna = 0 -> pelna,
+ * plaszna = 1 -> szachownica,
+ * plansza = 2 -> losowa,
+ */
+uint8_t randomArray[6];
+uint8_t randomNumber = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void PeriphCommonClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
@@ -96,6 +109,7 @@ static void MX_ADC1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_RNG_Init(void);
 /* USER CODE BEGIN PFP */
 static void PlatformMoveRight(int startPoint, int length);
 static void PlatformMoveLeft(int startPoint, int length);
@@ -136,6 +150,9 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
+/* Configure the peripherals common clocks */
+  PeriphCommonClock_Config();
+
   /* USER CODE BEGIN SysInit */
 
 
@@ -149,13 +166,15 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_TIM2_Init();
+  MX_RNG_Init();
   /* USER CODE BEGIN 2 */
   //HAL_TIM_Base_Init(&htim3);
   //HAL_TIM_Base_Init(&htim6);
+  HAL_ADC_Start_DMA(&hadc1, joystick, 2);
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start_IT(&htim4);
-  HAL_ADC_Start_DMA(&hadc1, joystick, 2);
+
   LCD_init();
   /* USER CODE END 2 */
 
@@ -188,6 +207,13 @@ int main(void)
 
   LCD_refreshScr();
   LCD_print("0", 72, 0);*/
+  //Generowanie pozycji lepszych bloczkow
+  for (uint8_t i = 0; i < 6; i++){
+	  randomArray[i] = HAL_RNG_GetRandomNumber(&hrng)%21;
+	  printf("%d\n",randomArray[i]);
+  }
+
+
   while (1){
 	  //Odbicia od ścian
 	  if (ball_pos_x + 1 > 68)
@@ -209,19 +235,32 @@ int main(void)
 	  }
 	  for (int row = 0; row < numRows; row++) {
 	      for (int col = 0; col < numBlocksPerRow; col++) {
-	        if (blocks[row][col] == 1) {
+	        if (blocks[row][col] > 0) {
 	          int blockX = col * (blockWidth + gap);
 	          int blockY = row * (blockHeight + gap) + topOffset;
-
 	          // Sprawdź kolizję piłki z bloczkiem
 	          if ((ball_pos_x + 1) >= blockX && (ball_pos_x - 1) <= (blockX + blockWidth) && (ball_pos_y - 1) <= blockY && (ball_pos_y + 1) >= (blockY - blockHeight)) {
-	            // Usuń bloczek
-	            blocks[row][col] = 0;
-	            //zwieksz wynik o 1
-	            scoreint+=1;
+	        	  // wykrycie odbicia od pustego bloczka
+	        	  if(blocks[row][col] == 1){
+	        		  //Usun bloczek
+	        		  blocks[row][col] = 0;
+
+	        		  scoreint += 1;
+	        		  printf("odbicie od pustego\n");
+	        	  }
+	        	  // wykrycie odbicia od kratkowanego bloczka
+	        	  else if(blocks[row][col] == 2){
+	        		  scoreint += 2;
+	        	  }
+	        	  // wykrycie odbicia od pelnego bloczka
+	        	  else if (blocks[row][col] == 3){
+	        		  scoreint += 3;
+	        	  }
+	        	  blocks[row][col] = 0;
+	        	  LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 	            sprintf(score, "%d", scoreint);
 	            LCD_print(score, 72, 0);
-	            LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+
 	            //Wykrycie odbicia od scian bloczkow - zmien kierunek w osi X
 	            if ((ball_pos_x + 1) == blockX || (ball_pos_x - 1) == blockX + blockWidth){
 	            	ball_dir_x *= -1;
@@ -234,7 +273,8 @@ int main(void)
 	        }
 	      }
 	    }
-	  //printf("%d\n",(platform_pos + platform_length)/2);
+	  //randomNumber = HAL_RNG_GetRandomNumber(&hrng);
+	  //printf("%d\n",randomNumber);
 
   }
   {
@@ -289,6 +329,32 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief Peripherals Common Clock Configuration
+  * @retval None
+  */
+void PeriphCommonClock_Config(void)
+{
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
+
+  /** Initializes the peripherals clock
+  */
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RNG|RCC_PERIPHCLK_ADC;
+  PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
+  PeriphClkInit.RngClockSelection = RCC_RNGCLKSOURCE_PLLSAI1;
+  PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_HSI;
+  PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
+  PeriphClkInit.PLLSAI1.PLLSAI1N = 8;
+  PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV7;
+  PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV4;
+  PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
+  PeriphClkInit.PLLSAI1.PLLSAI1ClockOut = RCC_PLLSAI1_48M2CLK|RCC_PLLSAI1_ADC1CLK;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
@@ -371,6 +437,32 @@ static void MX_ADC1_Init(void)
 }
 
 /**
+  * @brief RNG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RNG_Init(void)
+{
+
+  /* USER CODE BEGIN RNG_Init 0 */
+
+  /* USER CODE END RNG_Init 0 */
+
+  /* USER CODE BEGIN RNG_Init 1 */
+
+  /* USER CODE END RNG_Init 1 */
+  hrng.Instance = RNG;
+  if (HAL_RNG_Init(&hrng) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RNG_Init 2 */
+
+  /* USER CODE END RNG_Init 2 */
+
+}
+
+/**
   * @brief TIM2 Initialization Function
   * @param None
   * @retval None
@@ -391,7 +483,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 7999;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 5000;
+  htim2.Init.Period = 4400;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -481,7 +573,7 @@ static void MX_TIM4_Init(void)
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 7999;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 700;
+  htim4.Init.Period = 900;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
@@ -703,15 +795,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   	  }
 
   }
-  if (htim == &htim2 && (!initGame && !startGame )){
+  if (htim == &htim2 && (!initGame && !startGame)){
 	  if(JOY0<=1000)
 	  		{
 	  			switch(temp_screen)
 	  				 {
+	  				case 0:
+	  					temp_screen = 1;
+	  					break;
 	  				 case 1:
-	  					 temp_screen=5;
-
-	  					 break;
+	  					 	 temp_screen=5;
+	  					 	 break;
 	  				 case 2:
 	  				 		 temp_screen=1;
 	  				 		 break;
@@ -820,7 +914,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  	  switch(screen)
 	  	  	 {
 	  	  	 case 1:
-	  	  //LCD_refreshScr();
 	  	  LCD_clrScr();
 	  	  LCD_invertText(1);
 	  	  LCD_print("1.START", 0, 0);
@@ -955,27 +1048,65 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  	  LCD_invertText(0);
 	  	  break;
 	  	  case 17:
-	  		  initGame = true;
-	  		LCD_refreshScr();
-	  		LCD_drawBall((platform_pos + platform_length)/2, PLATFORM_LVL-2, 1);
+	  		initGame = true;
+	  		LCD_clrScr();
+	  		//ta linijka psula, nie wiem czemu :(
+	  		//LCD_drawBall((platform_pos + platform_length)/2, PLATFORM_LVL-2, 1);
 	  		LCD_drawHLine(platform_pos, PLATFORM_LVL, platform_length); // poczatkowe polozenie platformy
 	  		LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos + platform_length, PLATFORM_LVL);
 
 	  	  // Inicjalizuj stan bloczkow
-	  	  for (int row = 0; row < numRows; row++) {
-	  	    for (int col = 0; col < numBlocksPerRow; col++) {
-	  	    	if((row+col)%1==0){
-					blocks[row][col] = 1; // Wszystkie bloczki są widoczne na początku
-					  int blockX = col * (blockWidth + gap);
-					  int blockY = row * (blockHeight + gap) + topOffset;
-	  			LCD_drawFilledRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-	  	    	}
-	  	    }
-	  	  }
-	  	  LCD_drawVLine(70, 0, 48);
+	  		switch(plansza){
+	  		// Rysowanie pelnej planszy
+	  		case 0:
+	  			for (int row = 0; row < numRows; row++) {
+					for (int col = 0; col < numBlocksPerRow; col++) {
+							numerBloczka++;
+							int blockX = col * (blockWidth + gap);
+							int blockY = row * (blockHeight + gap) + topOffset;
 
-	  	  LCD_refreshScr();
-	  	  LCD_print("0", 72, 0);
+							blocks[row][col] = 1; // Wszystkie bloczki są widoczne na początku
+							LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+
+							for (int i = 0; i < 6; i++){
+								if(randomArray[i] == numerBloczka){
+									if (randomArray[i]%2==0){
+										blocks[row][col] = 3; // rysuj pelny bloczek
+										LCD_drawFilledRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+									}
+									else{
+										blocks[row][col] = 2; // rysuj kratkowany bloczek
+										LCD_drawChequeredRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+									}
+									break;
+								}
+							}
+					}
+				  }
+				  // Rysuj wynik po prawej
+				  LCD_drawVLine(70, 0, 48);
+				  LCD_refreshScr();
+				  LCD_print("0", 72, 0);
+				  break;
+				  // Rysowanie szachownicy planszy
+	  		case 1:
+	  			for (int row = 0; row < numRows; row++) {
+						for (int col = 0; col < numBlocksPerRow; col++) {
+							if((row+col)%2==0){
+								blocks[row][col] = 1; // Widoczny co drugi bloczek
+								int blockX = col * (blockWidth + gap);
+								int blockY = row * (blockHeight + gap) + topOffset;
+								LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+							}
+						}
+					  }
+					  // Rysuj wynik po prawej
+					  LCD_drawVLine(70, 0, 48);
+					  LCD_refreshScr();
+					  LCD_print("0", 72, 0);
+					  break;
+	  		}
+
 	  		break;
 	  	  	 }
 
@@ -993,25 +1124,40 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 		switch(temp_screen)
 				 	 {
 				 	case 2:
-				 		temp_screen=6;
+				 		temp_screen = 6;
 				 		break;
 				 	case 3:
-				 		temp_screen=10;
+				 		temp_screen = 10;
 				 		break;
 				 	case 4:
-				 		temp_screen=14;
+				 		temp_screen = 14;
+				 		break;
+				 	// Wybierz plansza pelna, default
+				 	case 6:
+				 		plansza = 0;
+				 		temp_screen = 1;
+				 		break;
+					// Wybierz plansza szachownica
+				 	case 7:
+				 		plansza = 1;
+				 		temp_screen = 1;
+				 		break;
+					// Wybierz plansza losowa
+				 	case 8:
+				 		plansza = 2;
+				 		temp_screen = 1;
 				 		break;
 				 	 case 9:
-					 	temp_screen=1;
+					 	temp_screen = 2;
 			 		 	break;
 				 	 case 13:
-				 		 temp_screen=1;
+				 		 temp_screen = 1;
 					 	break;
 				 	 case 16:
-					 	temp_screen=1;
+					 	temp_screen = 1;
 					 	break;
 				 	 case 1:
-				 		 temp_screen=17;
+				 		 temp_screen = 17;
 						 break;
 				 	 case 17:
 				 		 startGame = true;
