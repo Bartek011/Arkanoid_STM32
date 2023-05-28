@@ -83,6 +83,8 @@ uint8_t scoreint = 0;
 //Menu
 uint8_t screen = 1;
 uint8_t temp_screen = 1;
+bool initGame = false;
+bool startGame = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -150,6 +152,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   //HAL_TIM_Base_Init(&htim3);
   //HAL_TIM_Base_Init(&htim6);
+  HAL_TIM_Base_Start_IT(&htim2);
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start_IT(&htim4);
   HAL_ADC_Start_DMA(&hadc1, joystick, 2);
@@ -158,9 +161,9 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  LCD_drawBall((platform_pos + platform_length)/2, PLATFORM_LVL-2, 1);
-  LCD_drawHLine(platform_pos, PLATFORM_LVL, platform_length); // poczatkowe polozenie platformy
-  LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos + platform_length, PLATFORM_LVL);
+ // LCD_drawBall((platform_pos + platform_length)/2, PLATFORM_LVL-2, 1);
+  //LCD_drawHLine(platform_pos, PLATFORM_LVL, platform_length); // poczatkowe polozenie platformy
+  //LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos + platform_length, PLATFORM_LVL);
   /*for (int i = 10; i<= 30; i+=11){
 
   }*/
@@ -169,7 +172,7 @@ int main(void)
 //LCD_drawChequeredRectangle(34, 20, 44, 15);
 //LCD_refreshScr();
   // Inicjalizuj stan bloczkow
-  for (int row = 0; row < numRows; row++) {
+  /*for (int row = 0; row < numRows; row++) {
     for (int col = 0; col < numBlocksPerRow; col++) {
     	if((row+col)%2==0){
     		blocks[row][col] = 1; // Wszystkie bloczki są widoczne na początku
@@ -184,7 +187,7 @@ int main(void)
   LCD_drawVLine(70, 0, 48);
 
   LCD_refreshScr();
-  LCD_print("0", 72, 0);
+  LCD_print("0", 72, 0);*/
   while (1){
 	  //Odbicia od ścian
 	  if (ball_pos_x + 1 > 68)
@@ -219,11 +222,11 @@ int main(void)
 	            sprintf(score, "%d", scoreint);
 	            LCD_print(score, 72, 0);
 	            LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-	            //Wykrycie odbicia od scian - zmien kierunek w osi X
+	            //Wykrycie odbicia od scian bloczkow - zmien kierunek w osi X
 	            if ((ball_pos_x + 1) == blockX || (ball_pos_x - 1) == blockX + blockWidth){
 	            	ball_dir_x *= -1;
 	            }
-	            //Wykrycie odbicia od podstaw - zmien kierunek w osi Y
+	            //Wykrycie odbicia od podstaw bloczkow - zmien kierunek w osi Y
 	            if ((ball_pos_y - 1) == blockY || (ball_pos_y + 1) == (blockY - blockHeight)){
 	            	ball_dir_y *= -1;
 	            }
@@ -478,7 +481,7 @@ static void MX_TIM4_Init(void)
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 7999;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 1500;
+  htim4.Init.Period = 700;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
@@ -607,7 +610,7 @@ static void MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 10, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 9, 0);
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 10, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
@@ -670,8 +673,7 @@ int __io_putchar(int ch){
 	return 1;
 }
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	if (htim == &htim4){
-		if(joystick_flag == true){
+	if (htim == &htim4 && startGame){
 			if (ball_dir_x > 0 && ball_dir_y > 0)
 				BallMoveRightUp(ball_pos_x, ball_pos_y);
 			if (ball_dir_x  < 0 && ball_dir_y > 0)
@@ -680,25 +682,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 				BallMoveRightDown(ball_pos_x, ball_pos_y);
 			if (ball_dir_x < 0 && ball_dir_y < 0)
 				BallMoveLeftDown(ball_pos_x, ball_pos_y);
-
-		}
-	  	/*for (int row = 0; row < numRows; row++) {
-	  		      for (int col = 0; col < numBlocksPerRow; col++) {
-	  		    	int blockX = col * (blockWidth + gap);
-	  		    	int blockY = row * (blockHeight + gap) + topOffset;
-
-	  		      if (blocks[row][col] == 0) {
-			        	//LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-	  		      }
-	  		      }
-	}*/
-
-		//printf("x:%d\t y:%d\t dir_x:%d\t dir_y:%d\n", ball_pos_x, ball_pos_y,ball_dir_x, ball_dir_y);
 	  }
-  if (htim == &htim3) {
-	  //printf("%d\n",JOY0);
-	  //int* ball_pos_x_pointer = &ball_pos_x;
-	  //int* ball_pos_y_pointer = &ball_pos_y;
+  if (htim == &htim3 && (startGame || initGame)) {
+
 	  if (JOY1 > 2300 && platform_pos > 0){
 		  PlatformMoveLeft(platform_pos, platform_length);
 		  platform_pos--;
@@ -707,7 +693,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   		  PlatformMoveRight(platform_pos, platform_length);
   		  platform_pos++;
   	  }
-  	  if (joystick_flag == false){
+  	  if (!startGame){
   		  //Rysowanie pilki przed startem gry
   		  ball_pos_x = platform_pos + (platform_length/2);
   		  ball_pos_y = PLATFORM_LVL-2;
@@ -717,15 +703,369 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   	  }
 
   }
+  if (htim == &htim2 && (!initGame && !startGame )){
+	  if(JOY0<=1000)
+	  		{
+	  			switch(temp_screen)
+	  				 {
+	  				 case 1:
+	  					 temp_screen=5;
+
+	  					 break;
+	  				 case 2:
+	  				 		 temp_screen=1;
+	  				 		 break;
+	  				 case 3:
+	  				 		 temp_screen=2;
+	  				 		 break;
+	  				 case 4:
+	  				 		 temp_screen=3;
+	  				 		 break;
+	  				 case 5:
+	  				 		 temp_screen=4;
+	  				 		 break;
+	  				 case 6:
+	  				 		 temp_screen=9;
+	  				 		 break;
+	  				 case 7:
+	  				 		 temp_screen=6;
+	  				 		 break;
+	  				 case 8:
+	  				 		 temp_screen=7;
+	  				 		 break;
+	  				 case 9:
+	  				 		 temp_screen=8;
+	  				 		 break;
+	  				 case 10:
+	  				 		 temp_screen=13;
+	  				 		 break;
+	  				 case 11:
+	  				 		 temp_screen=10;
+	  				 		 break;
+	  				 case 12:
+	  				 		 temp_screen=11;
+	  				 		 break;
+	  				 case 13:
+	  				 		 temp_screen=12;
+	  				 		 break;
+	  				 case 14:
+	  				 		 temp_screen=16;
+	  				 		 break;
+	  				 case 15:
+	  				 		 temp_screen=14;
+	  				 		 break;
+	  				 case 16:
+	  				 		 temp_screen=15;
+	  				 		 break;
+	  				 }
+	  				 screen=temp_screen;
+
+	  		}
+	  	if(JOY0>=3000)
+	  	{
+	  		 switch(temp_screen)
+	  			 {
+	  			case 1:
+	  				temp_screen=2;
+	  				break;
+	  			case 2:
+	  				temp_screen=3;
+	  				break;
+	  			case 3:
+	  				temp_screen=4;
+	  				break;
+	  			case 4:
+	  				temp_screen=5;
+	  				break;
+	  			case 5:
+	  				temp_screen=1;
+	  				break;
+	  			case 6:
+	  				temp_screen=7;
+	  				break;
+	  			case 7:
+	  				temp_screen=8;
+	  				break;
+	  			case 8:
+	  				temp_screen=9;
+	  				break;
+	  			case 9:
+	  				temp_screen=6;
+	  				break;
+	  			case 10:
+	  				temp_screen=11;
+	  				break;
+	  			case 11:
+	  				temp_screen=12;
+	  				break;
+	  			case 12:
+	  				temp_screen=13;
+	  				break;
+	  			case 13:
+	  				temp_screen=10;
+	  				break;
+	  			case 14:
+	  				temp_screen=15;
+	  				break;
+	  			case 15:
+	  				temp_screen=16;
+	  				break;
+	  			case 16:
+	  				temp_screen=14;
+	  				break;
+	  			 }
+	  				screen=temp_screen;
+
+	  	}
+	  	  switch(screen)
+	  	  	 {
+	  	  	 case 1:
+	  	  //LCD_refreshScr();
+	  	  LCD_clrScr();
+	  	  LCD_invertText(1);
+	  	  LCD_print("1.START", 0, 0);
+	  	  LCD_invertText(0);
+	  	  LCD_print("2.PLANSZA", 0, 1);
+	  	  LCD_print("3.POZIOM", 0, 2);
+	  	  LCD_print("4.GRACZE", 0, 3);
+	  	  LCD_print("5.REKORDY", 0, 4);
+	  	  break;
+	  	  	 case 2:
+	  	  LCD_print("1.START", 0, 0);
+	  	  LCD_invertText(1);
+	  	  LCD_print("2.PLANSZA", 0, 1);
+	  	  LCD_invertText(0);
+	  	  LCD_print("3.POZIOM", 0, 2);
+	  	  LCD_print("4.GRACZE", 0, 3);
+	  	  LCD_print("5.REKORDY", 0, 4);
+	  	  break;
+	  	  	 case 3:
+	  	  LCD_print("1.START", 0, 0);
+	  	  LCD_print("2.PLANSZA", 0, 1);
+	  	  LCD_invertText(1);
+	  	  LCD_print("3.POZIOM", 0, 2);
+	  	  LCD_invertText(0);
+	  	  LCD_print("4.GRACZE", 0, 3);
+	  	  LCD_print("5.REKORDY", 0, 4);
+	  	  break;
+	  	  	 case 4:
+	  	  LCD_print("1.START", 0, 0);
+	  	  LCD_print("2.PLANSZA", 0, 1);
+	  	  LCD_print("3.POZIOM", 0, 2);
+	  	  LCD_invertText(1);
+	  	  LCD_print("4.GRACZE", 0, 3);
+	  	  LCD_invertText(0);
+	  	  LCD_print("5.REKORDY", 0, 4);
+	  	  break;
+	  	  	 case 5:
+	  	  LCD_print("1.START", 0, 0);
+	  	  LCD_print("2.PLANSZA", 0, 1);
+	  	  LCD_print("3.POZIOM", 0, 2);
+	  	  LCD_print("4.GRACZE", 0, 3);
+	  	  LCD_invertText(1);
+	  	  LCD_print("5.REKORDY", 0, 4);
+	  	  LCD_invertText(0);
+	  	     break;
+	  	  	 case 6:
+	  	  LCD_clrScr();
+	  	  LCD_invertText(1);
+	  	  LCD_print("1.PELNA", 0, 0);
+	  	  LCD_invertText(0);
+	  	  LCD_print("2.SZACHOWNICA", 0, 1);
+	  	  LCD_print("3.LOSOWA", 0, 2);
+	  	  LCD_print("4.COFNIJ", 0, 3);
+	  	  break;
+	  	  	 case 7:
+	  	  LCD_print("1.PELNA", 0, 0);
+	  	  LCD_invertText(1);
+	  	  LCD_print("2.SZACHOWNICA", 0, 1);
+	  	  LCD_invertText(0);
+	  	  LCD_print("3.LOSOWA", 0, 2);
+	  	  LCD_print("4.COFNIJ", 0, 3);
+	  	  break;
+	  	  	 case 8:
+	  	  LCD_print("1.PELNA", 0, 0);
+	  	  LCD_print("2.SZACHOWNICA", 0, 1);
+	  	  LCD_invertText(1);
+	  	  LCD_print("3.LOSOWA", 0, 2);
+	  	  LCD_invertText(0);
+	  	  LCD_print("4.COFNIJ", 0, 3);
+	  	  break;
+	  	  	 case 9:
+	  	  LCD_print("1.PELNA", 0, 0);
+	  	  LCD_print("2.SZACHOWNICA", 0, 1);
+	  	  LCD_print("3.LOSOWA", 0, 2);
+	  	  LCD_invertText(1);
+	  	  LCD_print("4.COFNIJ", 0, 3);
+	  	  LCD_invertText(0);
+	  	  break;
+	  	  	 case 10:
+	  	  LCD_clrScr();
+	  	  LCD_invertText(1);
+	  	  LCD_print("1.PIERWSZY", 0, 0);
+	  	  LCD_invertText(0);
+	  	  LCD_print("2.DRUGI", 0, 1);
+	  	  LCD_print("3.TRZECI", 0, 2);
+	  	  LCD_print("4.COFNIJ", 0, 3);
+	  	  break;
+	  	  	 case 11:
+	  	  LCD_print("1.PIERWSZY", 0, 0);
+	  	  LCD_invertText(1);
+	  	  LCD_print("2.DRUGI", 0, 1);
+	  	  LCD_invertText(0);
+	  	  LCD_print("3.TRZECI", 0, 2);
+	  	  LCD_print("4.COFNIJ", 0, 3);
+	  	  break;
+	  	  	 case 12:
+	  	  LCD_print("1.PIERWSZY", 0, 0);
+	  	  LCD_print("2.DRUGI", 0, 1);
+	  	  LCD_invertText(1);
+	  	  LCD_print("3.TRZECI", 0, 2);
+	  	  LCD_invertText(0);
+	  	  LCD_print("4.COFNIJ", 0, 3);
+	  	  break;
+	  	  	 case 13:
+	  	  LCD_print("1.PIERWSZY", 0, 0);
+	  	  LCD_print("2.DRUGI", 0, 1);
+	  	  LCD_print("3.TRZECI", 0, 2);
+	  	  LCD_invertText(1);
+	  	  LCD_print("4.COFNIJ", 0, 3);
+	  	  LCD_invertText(0);
+	  	  break;
+	  	  	 case 14:
+	  	  LCD_clrScr();
+	  	  LCD_invertText(1);
+	  	  LCD_print("1.JEDEN", 0, 0);
+	  	  LCD_invertText(0);
+	  	  LCD_print("2.DWOCH", 0, 1);
+	  	  LCD_print("3.COFNIJ", 0, 2);
+	  	  break;
+	  	  	 case 15:
+	  	  LCD_print("1.JEDEN", 0, 0);
+	  	  LCD_invertText(1);
+	  	  LCD_print("2.DWOCH", 0, 1);
+	  	  LCD_invertText(0);
+	  	  LCD_print("3.COFNIJ", 0, 2);
+	  	  break;
+	  	  	 case 16:
+	  	  LCD_print("1.JEDEN", 0, 0);
+	  	  LCD_print("2.DWOCH", 0, 1);
+	  	  LCD_invertText(1);
+	  	  LCD_print("3.COFNIJ", 0, 2);
+	  	  LCD_invertText(0);
+	  	  break;
+	  	  case 17:
+	  		  initGame = true;
+	  		LCD_refreshScr();
+	  		LCD_drawBall((platform_pos + platform_length)/2, PLATFORM_LVL-2, 1);
+	  		LCD_drawHLine(platform_pos, PLATFORM_LVL, platform_length); // poczatkowe polozenie platformy
+	  		LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos + platform_length, PLATFORM_LVL);
+
+	  	  // Inicjalizuj stan bloczkow
+	  	  for (int row = 0; row < numRows; row++) {
+	  	    for (int col = 0; col < numBlocksPerRow; col++) {
+	  	    	if((row+col)%1==0){
+					blocks[row][col] = 1; // Wszystkie bloczki są widoczne na początku
+					  int blockX = col * (blockWidth + gap);
+					  int blockY = row * (blockHeight + gap) + topOffset;
+	  			LCD_drawFilledRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+	  	    	}
+	  	    }
+	  	  }
+	  	  LCD_drawVLine(70, 0, 48);
+
+	  	  LCD_refreshScr();
+	  	  LCD_print("0", 72, 0);
+	  		break;
+	  	  	 }
+
+  }
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == JOYSTICK_BUTTON_Pin){
-		joystick_flag = true;
+		//joystick_flag = true;
 
 		licznik++;
 		//printf("%d\n",licznik);
 		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+
+		//Menu
+		switch(temp_screen)
+				 	 {
+				 	case 2:
+				 		temp_screen=6;
+				 		break;
+				 	case 3:
+				 		temp_screen=10;
+				 		break;
+				 	case 4:
+				 		temp_screen=14;
+				 		break;
+				 	 case 9:
+					 	temp_screen=1;
+			 		 	break;
+				 	 case 13:
+				 		 temp_screen=1;
+					 	break;
+				 	 case 16:
+					 	temp_screen=1;
+					 	break;
+				 	 case 1:
+				 		 temp_screen=17;
+						 break;
+				 	 case 17:
+				 		 startGame = true;
+						 initGame = false;
+				 		 break;
+				 	 }
+				 	screen=temp_screen;
 	}
+	// Menu powrot to glownego ekranu
+	if(GPIO_Pin == B1_Pin)
+		 {
+			 switch(temp_screen)
+			 	 {
+			 	case 6:
+			 		temp_screen=1;
+			 		break;
+			 	case 7:
+			 		temp_screen=1;
+			 		break;
+			 	case 8:
+			 		temp_screen=1;
+			 		break;
+			 	 case 9:
+				 	temp_screen=1;
+		 		 	break;
+			 	 case 10:
+			 		 temp_screen=1;
+				 	break;
+			 	 case 11:
+				 	temp_screen=1;
+				 	break;
+			 	 case 12:
+				 	temp_screen=1;
+				 	break;
+			 	 case 13:
+				 	temp_screen=1;
+				 	break;
+			 	 case 14:
+				 	temp_screen=1;
+				 	break;
+			 	 case 15:
+				 	temp_screen=1;
+				 	break;
+			 	 case 16:
+				 	temp_screen=1;
+				 	break;
+			 	 case 17:
+			 		 startGame = false;
+					 initGame = false;
+				 	temp_screen=1;
+				 	break;
+			 	 }
+			 	screen=temp_screen;
+		 }
 }
 
 /* USER CODE END 4 */
