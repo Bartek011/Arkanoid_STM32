@@ -53,6 +53,8 @@ RNG_HandleTypeDef hrng;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim6;
+TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart2;
 
@@ -97,6 +99,7 @@ uint8_t plansza = 0;
  */
 uint8_t randomArray[6];
 uint8_t randomNumber = 0;
+uint8_t level = 1;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -110,12 +113,16 @@ static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_RNG_Init(void);
+static void MX_TIM6_Init(void);
+static void MX_TIM7_Init(void);
 /* USER CODE BEGIN PFP */
 static void PlatformMoveRight(int startPoint, int length);
 static void PlatformMoveLeft(int startPoint, int length);
 static void BallMoveLeftUp(int x, int y);
+static void BallMovement();
 int __io_putchar(int ch); //debug uart
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
+void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim);
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 /* USER CODE END PFP */
 
@@ -167,6 +174,8 @@ int main(void)
   MX_TIM4_Init();
   MX_TIM2_Init();
   MX_RNG_Init();
+  MX_TIM6_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
   //HAL_TIM_Base_Init(&htim3);
   //HAL_TIM_Base_Init(&htim6);
@@ -174,6 +183,8 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start_IT(&htim4);
+  HAL_TIM_Base_Start_IT(&htim6);
+  HAL_TIM_Base_Start_IT(&htim7);
 
   LCD_init();
   /* USER CODE END 2 */
@@ -222,9 +233,14 @@ int main(void)
 		  ball_dir_x = 1;
 	  if (ball_pos_y - 1 <= 0)
 		  ball_dir_y = -1;
-	  // Odbicie od podłogi
-	  /*if (ball_pos_y + 1 > 46)
-		  ball_dir_y = 1;*/
+	  // Odbicie od podłogi -> Koniec gry
+	  if (ball_pos_y + 1 > 46){
+		  screen = 18;
+		  initGame = false;
+		  startGame = false;
+	  }
+
+
 	  //Odbicia od platformy
 	  if (ball_pos_y + 1 > 45 && (ball_pos_x >= platform_pos && ball_pos_x <= (platform_pos + platform_length))){
 		  ball_dir_y = 1;
@@ -242,11 +258,7 @@ int main(void)
 	          if ((ball_pos_x + 1) >= blockX && (ball_pos_x - 1) <= (blockX + blockWidth) && (ball_pos_y - 1) <= blockY && (ball_pos_y + 1) >= (blockY - blockHeight)) {
 	        	  // wykrycie odbicia od pustego bloczka
 	        	  if(blocks[row][col] == 1){
-	        		  //Usun bloczek
-	        		  blocks[row][col] = 0;
-
 	        		  scoreint += 1;
-	        		  printf("odbicie od pustego\n");
 	        	  }
 	        	  // wykrycie odbicia od kratkowanego bloczka
 	        	  else if(blocks[row][col] == 2){
@@ -483,7 +495,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 7999;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 4400;
+  htim2.Init.Period = 5000;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -573,7 +585,7 @@ static void MX_TIM4_Init(void)
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 7999;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 900;
+  htim4.Init.Period = 800;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
@@ -594,6 +606,82 @@ static void MX_TIM4_Init(void)
   /* USER CODE BEGIN TIM4_Init 2 */
 
   /* USER CODE END TIM4_Init 2 */
+
+}
+
+/**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 7999;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 500;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+
+  /* USER CODE END TIM6_Init 2 */
+
+}
+
+/**
+  * @brief TIM7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM7_Init(void)
+{
+
+  /* USER CODE BEGIN TIM7_Init 0 */
+
+  /* USER CODE END TIM7_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM7_Init 1 */
+
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 7999;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 380;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM7_Init 2 */
+
+  /* USER CODE END TIM7_Init 2 */
 
 }
 
@@ -756,6 +844,16 @@ static void BallMoveRightDown(int x, int y){
 	*newX += 1;
 	*newY +=1;
 }
+static void BallMovement(){
+	if (ball_dir_x > 0 && ball_dir_y > 0)
+		BallMoveRightUp(ball_pos_x, ball_pos_y);
+	if (ball_dir_x  < 0 && ball_dir_y > 0)
+		BallMoveLeftUp(ball_pos_x, ball_pos_y);
+	if (ball_dir_x > 0 && ball_dir_y < 0)
+		BallMoveRightDown(ball_pos_x, ball_pos_y);
+	if (ball_dir_x < 0 && ball_dir_y < 0)
+		BallMoveLeftDown(ball_pos_x, ball_pos_y);
+}
 int __io_putchar(int ch){
 	if (ch == '\n') {
 		uint8_t ch2 = '\r';
@@ -764,17 +862,18 @@ int __io_putchar(int ch){
 	HAL_UART_Transmit(&huart2, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
 	return 1;
 }
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	if (htim == &htim4 && startGame){
-			if (ball_dir_x > 0 && ball_dir_y > 0)
-				BallMoveRightUp(ball_pos_x, ball_pos_y);
-			if (ball_dir_x  < 0 && ball_dir_y > 0)
-				BallMoveLeftUp(ball_pos_x, ball_pos_y);
-			if (ball_dir_x > 0 && ball_dir_y < 0)
-				BallMoveRightDown(ball_pos_x, ball_pos_y);
-			if (ball_dir_x < 0 && ball_dir_y < 0)
-				BallMoveLeftDown(ball_pos_x, ball_pos_y);
+	if ((htim == &htim4 && startGame) && level == 1){
+		BallMovement();
 	  }
+	if ((htim == &htim6 && startGame) && level == 2){
+		BallMovement();
+	}
+	if ((htim == &htim7 && startGame) && level == 3){
+			BallMovement();
+		}
+
   if (htim == &htim3 && (startGame || initGame)) {
 
 	  if (JOY1 > 2300 && platform_pos > 0){
@@ -1108,6 +1207,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  		}
 
 	  		break;
+	  		//Ekran konca gry
+	  		case 18:
+	  			LCD_clrScr();
+	  			//LCD_invertText(1);
+	  			LCD_printGameOver();
+	  			//LCD_invertText(0);
+	  			break;
 	  	  	 }
 
   }
@@ -1150,6 +1256,21 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 				 	 case 9:
 					 	temp_screen = 2;
 			 		 	break;
+					// Wybierz 1 poziom trudnosci
+				 	 case 10:
+				 		 level = 1;
+				 		 temp_screen = 1;
+				 		 break;
+					 // Wybierz 2 poziom trudnosci
+				 	 case 11:
+				 		 level = 2;
+				 		 temp_screen = 1;
+				 		 break;
+					 // Wybierz 3 poziom trudnosci
+				 	 case 12:
+				 		 level = 3;
+				 		 temp_screen = 1;
+				 		 break;
 				 	 case 13:
 				 		 temp_screen = 1;
 					 	break;

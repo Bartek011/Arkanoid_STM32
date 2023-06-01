@@ -132,5 +132,6 @@ void LCD_drawRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
 void LCD_drawFilledRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
 void LCD_drawChequeredRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
 void LCD_drawEmptyRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
+void LCD_printGameOver();
 
 #endif

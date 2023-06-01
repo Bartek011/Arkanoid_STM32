@@ -125,6 +125,15 @@ void LCD_putChar(char c){
       LCD_write(~(ASCII[c - 0x20][i]), LCD_DATA);
   }
 }
+void LCD_printGameOver(){
+	 LCD_goXY(0, 0);
+	for(int i = 0; i < 504; i++){
+		if(lcd.inverttext != true)
+		  LCD_write(GAMEOVER[i], LCD_DATA);
+		else
+		  LCD_write(~(GAMEOVER[i]), LCD_DATA);
+	}
+}
 
 /*
  * @brief Print a string on the LCD
