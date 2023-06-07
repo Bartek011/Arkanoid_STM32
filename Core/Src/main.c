@@ -80,6 +80,13 @@ uint8_t numRows = 3;
 uint8_t topOffset = 5; // Odległość od górnej krawędzi ekranu
 uint8_t blocks[3][7]; // Tablica do przechowywania stanu bloczków
 uint8_t numerBloczka = 0;
+uint8_t last_x_block = 0; //Pozycja x ostatniego odbitego bloczka, fix do rysowania
+uint8_t last_y_block = 0; //Pozycja y ostatniego odbitego bloczka, fix do rysowania
+bool odbicieBloczek = false; //Flaga do detekcji pojedycznego odbicia od bloczka
+bool draw_new_block = false; //Flaga do rysowania nowego rodzaju bloczka
+uint8_t new_block_type = 0;
+uint8_t ball_pos_bounce_x = 0; //Pozycja x pilki przy odbiciu od ostatniego bloczka
+uint8_t ball_pos_bounce_y = 0; //Pozycja y pilki przy odbiciu od ostatniego bloczka
 
 //Wynik
 char score[3];
@@ -239,8 +246,6 @@ int main(void)
 		  initGame = false;
 		  startGame = false;
 	  }
-
-
 	  //Odbicia od platformy
 	  if (ball_pos_y + 1 > 45 && (ball_pos_x >= platform_pos && ball_pos_x <= (platform_pos + platform_length))){
 		  ball_dir_y = 1;
@@ -249,27 +254,43 @@ int main(void)
 		  else if (ball_pos_x <= (platform_pos + (platform_length/2)))
 			  ball_dir_x = -1;
 	  }
+	  //Odbicia od bloczkow
 	  for (int row = 0; row < numRows; row++) {
 	      for (int col = 0; col < numBlocksPerRow; col++) {
 	        if (blocks[row][col] > 0) {
 	          int blockX = col * (blockWidth + gap);
 	          int blockY = row * (blockHeight + gap) + topOffset;
 	          // Sprawdź kolizję piłki z bloczkiem
-	          if ((ball_pos_x + 1) >= blockX && (ball_pos_x - 1) <= (blockX + blockWidth) && (ball_pos_y - 1) <= blockY && (ball_pos_y + 1) >= (blockY - blockHeight)) {
+	          if ((ball_pos_x + 1) >= blockX && (ball_pos_x - 1) <= (blockX + blockWidth) && (ball_pos_y - 1) <= blockY && (ball_pos_y + 1) >= (blockY - blockHeight) && !odbicieBloczek) {
+	        	  odbicieBloczek  = true;
+	        	  draw_new_block = true;
+	        	  ball_pos_bounce_x = ball_pos_x;
+	        	  ball_pos_bounce_y = ball_pos_y;
+	        	  // Pozycja bloczka do pozniejszego rysowania
+	        	  last_x_block = blockX;
+	        	  last_y_block = blockY;
 	        	  // wykrycie odbicia od pustego bloczka
 	        	  if(blocks[row][col] == 1){
+	        		  new_block_type = 0;
+	        		  //LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 	        		  scoreint += 1;
 	        	  }
 	        	  // wykrycie odbicia od kratkowanego bloczka
 	        	  else if(blocks[row][col] == 2){
+	        		  new_block_type = 1;
+	        		  //LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+	        		  //LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 	        		  scoreint += 2;
 	        	  }
 	        	  // wykrycie odbicia od pelnego bloczka
 	        	  else if (blocks[row][col] == 3){
+	        		  new_block_type = 2;
+	        		  //LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+	        		  //LCD_drawChequeredRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 	        		  scoreint += 3;
 	        	  }
-	        	  blocks[row][col] = 0;
-	        	  LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+	        	  blocks[row][col] -= 1;
+
 	            sprintf(score, "%d", scoreint);
 	            LCD_print(score, 72, 0);
 
@@ -285,6 +306,24 @@ int main(void)
 	        }
 	      }
 	    }
+	  // Sprawdz czy pilka ruszyla sie od momentu odbicia
+	  if(abs(ball_pos_x - ball_pos_bounce_x) != 0 || abs(ball_pos_y - ball_pos_bounce_y) != 0){
+		  odbicieBloczek = false;
+	  }
+	  // Narysuj inny typ bloczka na ostatnim miescu odbicia
+	  if(!odbicieBloczek && draw_new_block){
+		  draw_new_block = false;
+		  LCD_drawEmptyRectangle(last_x_block, last_y_block, last_x_block + blockWidth, last_y_block - blockHeight);
+		  switch (new_block_type) {
+			case 1:
+				LCD_drawRectangle(last_x_block, last_y_block, last_x_block + blockWidth, last_y_block - blockHeight);
+				break;
+			case 2:
+				LCD_drawChequeredRectangle(last_x_block, last_y_block, last_x_block + blockWidth, last_y_block - blockHeight);
+			default:
+				break;
+		}
+	  }
 	  //randomNumber = HAL_RNG_GetRandomNumber(&hrng);
 	  //printf("%d\n",randomNumber);
 
@@ -629,7 +668,7 @@ static void MX_TIM6_Init(void)
   htim6.Instance = TIM6;
   htim6.Init.Prescaler = 7999;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 500;
+  htim6.Init.Period = 499;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -667,7 +706,7 @@ static void MX_TIM7_Init(void)
   htim7.Instance = TIM7;
   htim7.Init.Prescaler = 7999;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 380;
+  htim7.Init.Period = 300;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
