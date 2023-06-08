@@ -97,6 +97,8 @@ uint8_t screen = 0;
 uint8_t temp_screen = 0;
 bool initGame = false;
 bool startGame = false;
+bool overGame = false;
+bool flagOverScreen = false;
 
 //Konfiguracja gry
 uint8_t plansza = 0;
@@ -242,9 +244,7 @@ int main(void)
 		  ball_dir_y = -1;
 	  // Odbicie od podłogi -> Koniec gry
 	  if (ball_pos_y + 1 > 46){
-		  screen = 18;
-		  initGame = false;
-		  startGame = false;
+		  flagOverScreen = true;
 	  }
 	  //Odbicia od platformy
 	  if (ball_pos_y + 1 > 45 && (ball_pos_x >= platform_pos && ball_pos_x <= (platform_pos + platform_length))){
@@ -324,8 +324,20 @@ int main(void)
 				break;
 		}
 	  }
+	  //Wyswietl ekran konca gry
+	  if(flagOverScreen){
+		  flagOverScreen = false;
+		  overGame = true;
+		  startGame = false;
+		  temp_screen = 18;
+		  licznik++;
+		  ball_pos_x = platform_pos + (platform_length/2);
+		  ball_pos_y = PLATFORM_LVL-2;
+		  LCD_clrScr();
+		  LCD_printGameOver();
+	  }
 	  //randomNumber = HAL_RNG_GetRandomNumber(&hrng);
-	  //printf("%d\n",randomNumber);
+	  printf("ekran: %d\t licznik: %d\t startGame: %d \t initGame: %d \t overGame: %d \t x: %d \t y: %d \n",screen, licznik, startGame, initGame, overGame, ball_pos_x, ball_pos_y);
 
   }
   {
@@ -913,7 +925,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 			BallMovement();
 		}
 
-  if (htim == &htim3 && (startGame || initGame)) {
+  if (htim == &htim3 && ((startGame || initGame) && !overGame)) {
 
 	  if (JOY1 > 2300 && platform_pos > 0){
 		  PlatformMoveLeft(platform_pos, platform_length);
@@ -933,7 +945,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   	  }
 
   }
-  if (htim == &htim2 && (!initGame && !startGame)){
+  //if (htim == &htim2){
+	  //menu();
+  //}
+  if (htim == &htim2 && (!initGame && !startGame && !overGame)){
 	  if(JOY0<=1000)
 	  		{
 	  			switch(temp_screen)
@@ -1225,16 +1240,33 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 				  LCD_drawVLine(70, 0, 48);
 				  LCD_refreshScr();
 				  LCD_print("0", 72, 0);
+				  numerBloczka = 0;
 				  break;
+
 				  // Rysowanie szachownicy planszy
 	  		case 1:
 	  			for (int row = 0; row < numRows; row++) {
 						for (int col = 0; col < numBlocksPerRow; col++) {
 							if((row+col)%2==0){
+								numerBloczka++;
 								blocks[row][col] = 1; // Widoczny co drugi bloczek
 								int blockX = col * (blockWidth + gap);
 								int blockY = row * (blockHeight + gap) + topOffset;
 								LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+
+								for (int i = 0; i < 6; i++){
+									if(randomArray[i] == numerBloczka){
+										if (randomArray[i]%2==0){
+											blocks[row][col] = 3; // rysuj pelny bloczek
+											LCD_drawFilledRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+										}
+										else{
+											blocks[row][col] = 2; // rysuj kratkowany bloczek
+											LCD_drawChequeredRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+										}
+										break;
+									}
+								}
 							}
 						}
 					  }
@@ -1242,17 +1274,21 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 					  LCD_drawVLine(70, 0, 48);
 					  LCD_refreshScr();
 					  LCD_print("0", 72, 0);
+					  numerBloczka = 0;
 					  break;
 	  		}
 
-	  		break;
+	  		break;/*
 	  		//Ekran konca gry
 	  		case 18:
 	  			LCD_clrScr();
-	  			//LCD_invertText(1);
 	  			LCD_printGameOver();
-	  			//LCD_invertText(0);
 	  			break;
+			//Ekran nastepnego poziomu
+	  		case 19:
+	  			LCD_clrScr();
+	  			LCD_printLevelUp();
+	  			break;*/
 	  	  	 }
 
   }
@@ -1260,8 +1296,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == JOYSTICK_BUTTON_Pin){
 		//joystick_flag = true;
-
-		licznik++;
 		//printf("%d\n",licznik);
 		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
@@ -1293,7 +1327,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 				 		temp_screen = 1;
 				 		break;
 				 	 case 9:
-					 	temp_screen = 2;
+					 	temp_screen = 1;
 			 		 	break;
 					// Wybierz 1 poziom trudnosci
 				 	 case 10:
@@ -1322,7 +1356,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 				 	 case 17:
 				 		 startGame = true;
 						 initGame = false;
+						 temp_screen = 17;
 				 		 break;
+				 	case 18:
+						 overGame = false;
+						 temp_screen = 1;
+						 break;
 				 	 }
 				 	screen=temp_screen;
 	}
@@ -1369,9 +1408,241 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 					 initGame = false;
 				 	temp_screen=1;
 				 	break;
+			 	 case 18:
+			 		 overGame = false;
+			 		 temp_screen = 1;
+			 		 break;
 			 	 }
 			 	screen=temp_screen;
 		 }
+}
+void menu(){
+	switch(screen)
+		  	  	 {
+		  	  	 case 1:
+		  	  LCD_clrScr();
+		  	  LCD_invertText(1);
+		  	  LCD_print("1.START", 0, 0);
+		  	  LCD_invertText(0);
+		  	  LCD_print("2.PLANSZA", 0, 1);
+		  	  LCD_print("3.POZIOM", 0, 2);
+		  	  LCD_print("4.GRACZE", 0, 3);
+		  	  LCD_print("5.REKORDY", 0, 4);
+		  	  break;
+		  	  	 case 2:
+		  	  LCD_print("1.START", 0, 0);
+		  	  LCD_invertText(1);
+		  	  LCD_print("2.PLANSZA", 0, 1);
+		  	  LCD_invertText(0);
+		  	  LCD_print("3.POZIOM", 0, 2);
+		  	  LCD_print("4.GRACZE", 0, 3);
+		  	  LCD_print("5.REKORDY", 0, 4);
+		  	  break;
+		  	  	 case 3:
+		  	  LCD_print("1.START", 0, 0);
+		  	  LCD_print("2.PLANSZA", 0, 1);
+		  	  LCD_invertText(1);
+		  	  LCD_print("3.POZIOM", 0, 2);
+		  	  LCD_invertText(0);
+		  	  LCD_print("4.GRACZE", 0, 3);
+		  	  LCD_print("5.REKORDY", 0, 4);
+		  	  break;
+		  	  	 case 4:
+		  	  LCD_print("1.START", 0, 0);
+		  	  LCD_print("2.PLANSZA", 0, 1);
+		  	  LCD_print("3.POZIOM", 0, 2);
+		  	  LCD_invertText(1);
+		  	  LCD_print("4.GRACZE", 0, 3);
+		  	  LCD_invertText(0);
+		  	  LCD_print("5.REKORDY", 0, 4);
+		  	  break;
+		  	  	 case 5:
+		  	  LCD_print("1.START", 0, 0);
+		  	  LCD_print("2.PLANSZA", 0, 1);
+		  	  LCD_print("3.POZIOM", 0, 2);
+		  	  LCD_print("4.GRACZE", 0, 3);
+		  	  LCD_invertText(1);
+		  	  LCD_print("5.REKORDY", 0, 4);
+		  	  LCD_invertText(0);
+		  	     break;
+		  	  	 case 6:
+		  	  LCD_clrScr();
+		  	  LCD_invertText(1);
+		  	  LCD_print("1.PELNA", 0, 0);
+		  	  LCD_invertText(0);
+		  	  LCD_print("2.SZACHOWNICA", 0, 1);
+		  	  LCD_print("3.LOSOWA", 0, 2);
+		  	  LCD_print("4.COFNIJ", 0, 3);
+		  	  break;
+		  	  	 case 7:
+		  	  LCD_print("1.PELNA", 0, 0);
+		  	  LCD_invertText(1);
+		  	  LCD_print("2.SZACHOWNICA", 0, 1);
+		  	  LCD_invertText(0);
+		  	  LCD_print("3.LOSOWA", 0, 2);
+		  	  LCD_print("4.COFNIJ", 0, 3);
+		  	  break;
+		  	  	 case 8:
+		  	  LCD_print("1.PELNA", 0, 0);
+		  	  LCD_print("2.SZACHOWNICA", 0, 1);
+		  	  LCD_invertText(1);
+		  	  LCD_print("3.LOSOWA", 0, 2);
+		  	  LCD_invertText(0);
+		  	  LCD_print("4.COFNIJ", 0, 3);
+		  	  break;
+		  	  	 case 9:
+		  	  LCD_print("1.PELNA", 0, 0);
+		  	  LCD_print("2.SZACHOWNICA", 0, 1);
+		  	  LCD_print("3.LOSOWA", 0, 2);
+		  	  LCD_invertText(1);
+		  	  LCD_print("4.COFNIJ", 0, 3);
+		  	  LCD_invertText(0);
+		  	  break;
+		  	  	 case 10:
+		  	  LCD_clrScr();
+		  	  LCD_invertText(1);
+		  	  LCD_print("1.PIERWSZY", 0, 0);
+		  	  LCD_invertText(0);
+		  	  LCD_print("2.DRUGI", 0, 1);
+		  	  LCD_print("3.TRZECI", 0, 2);
+		  	  LCD_print("4.COFNIJ", 0, 3);
+		  	  break;
+		  	  	 case 11:
+		  	  LCD_print("1.PIERWSZY", 0, 0);
+		  	  LCD_invertText(1);
+		  	  LCD_print("2.DRUGI", 0, 1);
+		  	  LCD_invertText(0);
+		  	  LCD_print("3.TRZECI", 0, 2);
+		  	  LCD_print("4.COFNIJ", 0, 3);
+		  	  break;
+		  	  	 case 12:
+		  	  LCD_print("1.PIERWSZY", 0, 0);
+		  	  LCD_print("2.DRUGI", 0, 1);
+		  	  LCD_invertText(1);
+		  	  LCD_print("3.TRZECI", 0, 2);
+		  	  LCD_invertText(0);
+		  	  LCD_print("4.COFNIJ", 0, 3);
+		  	  break;
+		  	  	 case 13:
+		  	  LCD_print("1.PIERWSZY", 0, 0);
+		  	  LCD_print("2.DRUGI", 0, 1);
+		  	  LCD_print("3.TRZECI", 0, 2);
+		  	  LCD_invertText(1);
+		  	  LCD_print("4.COFNIJ", 0, 3);
+		  	  LCD_invertText(0);
+		  	  break;
+		  	  	 case 14:
+		  	  LCD_clrScr();
+		  	  LCD_invertText(1);
+		  	  LCD_print("1.JEDEN", 0, 0);
+		  	  LCD_invertText(0);
+		  	  LCD_print("2.DWOCH", 0, 1);
+		  	  LCD_print("3.COFNIJ", 0, 2);
+		  	  break;
+		  	  	 case 15:
+		  	  LCD_print("1.JEDEN", 0, 0);
+		  	  LCD_invertText(1);
+		  	  LCD_print("2.DWOCH", 0, 1);
+		  	  LCD_invertText(0);
+		  	  LCD_print("3.COFNIJ", 0, 2);
+		  	  break;
+		  	  	 case 16:
+		  	  LCD_print("1.JEDEN", 0, 0);
+		  	  LCD_print("2.DWOCH", 0, 1);
+		  	  LCD_invertText(1);
+		  	  LCD_print("3.COFNIJ", 0, 2);
+		  	  LCD_invertText(0);
+		  	  break;
+		  	  case 17:
+		  		initGame = true;
+		  		LCD_clrScr();
+		  		//ta linijka psula, nie wiem czemu :(
+		  		//LCD_drawBall((platform_pos + platform_length)/2, PLATFORM_LVL-2, 1);
+		  		LCD_drawHLine(platform_pos, PLATFORM_LVL, platform_length); // poczatkowe polozenie platformy
+		  		LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos + platform_length, PLATFORM_LVL);
+
+		  	  // Inicjalizuj stan bloczkow
+		  		switch(plansza){
+		  		// Rysowanie pelnej planszy
+		  		case 0:
+		  			for (int row = 0; row < numRows; row++) {
+						for (int col = 0; col < numBlocksPerRow; col++) {
+								numerBloczka++;
+								int blockX = col * (blockWidth + gap);
+								int blockY = row * (blockHeight + gap) + topOffset;
+
+								blocks[row][col] = 1; // Wszystkie bloczki są widoczne na początku
+								LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+
+								for (int i = 0; i < 6; i++){
+									if(randomArray[i] == numerBloczka){
+										if (randomArray[i]%2==0){
+											blocks[row][col] = 3; // rysuj pelny bloczek
+											LCD_drawFilledRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+										}
+										else{
+											blocks[row][col] = 2; // rysuj kratkowany bloczek
+											LCD_drawChequeredRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+										}
+										break;
+									}
+								}
+						}
+					  }
+					  // Rysuj wynik po prawej
+					  LCD_drawVLine(70, 0, 48);
+					  LCD_refreshScr();
+					  LCD_print("0", 72, 0);
+					  numerBloczka = 0;
+					  break;
+
+					  // Rysowanie szachownicy planszy
+		  		case 1:
+		  			for (int row = 0; row < numRows; row++) {
+							for (int col = 0; col < numBlocksPerRow; col++) {
+								if((row+col)%2==0){
+									numerBloczka++;
+									blocks[row][col] = 1; // Widoczny co drugi bloczek
+									int blockX = col * (blockWidth + gap);
+									int blockY = row * (blockHeight + gap) + topOffset;
+									LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+
+									for (int i = 0; i < 6; i++){
+										if(randomArray[i] == numerBloczka || randomArray[i] == numerBloczka + 1){
+											if (randomArray[i]%2==0){
+												blocks[row][col] = 3; // rysuj pelny bloczek
+												LCD_drawFilledRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+											}
+											else{
+												blocks[row][col] = 2; // rysuj kratkowany bloczek
+												LCD_drawChequeredRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+											}
+											break;
+										}
+									}
+								}
+							}
+						  }
+						  // Rysuj wynik po prawej
+						  LCD_drawVLine(70, 0, 48);
+						  LCD_refreshScr();
+						  LCD_print("0", 72, 0);
+						  numerBloczka = 0;
+						  break;
+		  		}
+
+		  		break;
+		  		//Ekran konca gry
+		  		case 18:
+		  			LCD_clrScr();
+		  			LCD_printGameOver();
+		  			break;
+				//Ekran nastepnego poziomu
+		  		case 19:
+		  			LCD_clrScr();
+		  			LCD_printLevelUp();
+		  			break;
+		  	  	 }
 }
 
 /* USER CODE END 4 */

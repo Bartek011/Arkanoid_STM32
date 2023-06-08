@@ -135,6 +135,16 @@ void LCD_printGameOver(){
 	}
 }
 
+void LCD_printLevelUp(){
+	 LCD_goXY(0, 0);
+	for(int i = 0; i < 504; i++){
+		if(lcd.inverttext != true)
+		  LCD_write(LEVELUP[i], LCD_DATA);
+		else
+		  LCD_write(~(LEVELUP[i]), LCD_DATA);
+	}
+}
+
 /*
  * @brief Print a string on the LCD
  * @param x: starting point on the x-axis (column)
