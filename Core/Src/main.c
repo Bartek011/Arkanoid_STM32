@@ -75,11 +75,12 @@ uint8_t licznik = 0;
 uint8_t blockWidth = 8;
 uint8_t blockHeight = 5;
 uint8_t gap = 2; // Przerwa pomiędzy bloczkami
-uint8_t numBlocksPerRow = 7;
-uint8_t numRows = 3;
+uint8_t numBlocksPerRow = 7; //default 7
+uint8_t numRows = 1; //default 3
 uint8_t topOffset = 5; // Odległość od górnej krawędzi ekranu
 uint8_t blocks[3][7]; // Tablica do przechowywania stanu bloczków
 uint8_t numerBloczka = 0;
+uint8_t numerBloczkaLevel = 0;
 uint8_t last_x_block = 0; //Pozycja x ostatniego odbitego bloczka, fix do rysowania
 uint8_t last_y_block = 0; //Pozycja y ostatniego odbitego bloczka, fix do rysowania
 bool odbicieBloczek = false; //Flaga do detekcji pojedycznego odbicia od bloczka
@@ -87,10 +88,14 @@ bool draw_new_block = false; //Flaga do rysowania nowego rodzaju bloczka
 uint8_t new_block_type = 0;
 uint8_t ball_pos_bounce_x = 0; //Pozycja x pilki przy odbiciu od ostatniego bloczka
 uint8_t ball_pos_bounce_y = 0; //Pozycja y pilki przy odbiciu od ostatniego bloczka
+uint8_t last_level_x_block = 0; //Pozcyja ostatniego zbitego bloczka w poziomie
+uint8_t last_level_y_block = 0; // Pozycja ostatniego zbitego bloczka w poziomie
+uint8_t last_level_type_block = 1; //Typ ostatniego zbitego bloczka w poziomie
 
 //Wynik
 char score[3];
 uint8_t scoreint = 0;
+uint8_t collapsedBlocks = 0; //aktualna liczba zbitych bloczkow
 
 //Menu
 uint8_t screen = 0;
@@ -99,6 +104,11 @@ bool initGame = false;
 bool startGame = false;
 bool overGame = false;
 bool flagOverScreen = false;
+bool flagNextLevel = false;
+bool przedostatniBloczek = false;
+bool drawed1 = false;
+bool drawed2 = false;
+bool drawed3 = false;
 
 //Konfiguracja gry
 uint8_t plansza = 0;
@@ -129,6 +139,7 @@ static void PlatformMoveRight(int startPoint, int length);
 static void PlatformMoveLeft(int startPoint, int length);
 static void BallMoveLeftUp(int x, int y);
 static void BallMovement();
+void randomArrayGen();
 int __io_putchar(int ch); //debug uart
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim);
@@ -200,38 +211,9 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
- // LCD_drawBall((platform_pos + platform_length)/2, PLATFORM_LVL-2, 1);
-  //LCD_drawHLine(platform_pos, PLATFORM_LVL, platform_length); // poczatkowe polozenie platformy
-  //LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos + platform_length, PLATFORM_LVL);
-  /*for (int i = 10; i<= 30; i+=11){
 
-  }*/
-//LCD_drawRectangle(10, 20, 20, 15);
-//LCD_drawFilledRectangle(22, 20, 32, 15);
-//LCD_drawChequeredRectangle(34, 20, 44, 15);
-//LCD_refreshScr();
-  // Inicjalizuj stan bloczkow
-  /*for (int row = 0; row < numRows; row++) {
-    for (int col = 0; col < numBlocksPerRow; col++) {
-    	if((row+col)%2==0){
-    		blocks[row][col] = 1; // Wszystkie bloczki są widoczne na początku
-
-
-      int blockX = col * (blockWidth + gap);
-      int blockY = row * (blockHeight + gap) + topOffset;
-		LCD_drawFilledRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-    	}
-    }
-  }
-  LCD_drawVLine(70, 0, 48);
-
-  LCD_refreshScr();
-  LCD_print("0", 72, 0);*/
   //Generowanie pozycji lepszych bloczkow
-  for (uint8_t i = 0; i < 6; i++){
-	  randomArray[i] = HAL_RNG_GetRandomNumber(&hrng)%21;
-	  printf("%d\n",randomArray[i]);
-  }
+  randomArrayGen();
 
 
   while (1){
@@ -257,6 +239,7 @@ int main(void)
 	  //Odbicia od bloczkow
 	  for (int row = 0; row < numRows; row++) {
 	      for (int col = 0; col < numBlocksPerRow; col++) {
+
 	        if (blocks[row][col] > 0) {
 	          int blockX = col * (blockWidth + gap);
 	          int blockY = row * (blockHeight + gap) + topOffset;
@@ -272,22 +255,22 @@ int main(void)
 	        	  // wykrycie odbicia od pustego bloczka
 	        	  if(blocks[row][col] == 1){
 	        		  new_block_type = 0;
-	        		  //LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 	        		  scoreint += 1;
+	        		  if(przedostatniBloczek){
+	        			  last_level_x_block = blockX;
+	        			  last_level_y_block = blockY;
+	        			  numerBloczkaLevel = (row * numBlocksPerRow) + col + 1;
+	        		  }
 	        	  }
 	        	  // wykrycie odbicia od kratkowanego bloczka
 	        	  else if(blocks[row][col] == 2){
 	        		  new_block_type = 1;
-	        		  //LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-	        		  //LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-	        		  scoreint += 2;
+	        		  scoreint += 1;
 	        	  }
 	        	  // wykrycie odbicia od pelnego bloczka
 	        	  else if (blocks[row][col] == 3){
 	        		  new_block_type = 2;
-	        		  //LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-	        		  //LCD_drawChequeredRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-	        		  scoreint += 3;
+	        		  scoreint += 1;
 	        	  }
 	        	  blocks[row][col] -= 1;
 
@@ -303,6 +286,7 @@ int main(void)
 	            	ball_dir_y *= -1;
 	            }
 	          }
+
 	        }
 	      }
 	    }
@@ -310,8 +294,34 @@ int main(void)
 	  if(abs(ball_pos_x - ball_pos_bounce_x) != 0 || abs(ball_pos_y - ball_pos_bounce_y) != 0){
 		  odbicieBloczek = false;
 	  }
+	  //sprawdz czy wszystkie bloczki zbite
+	  collapsedBlocks = 0;
+	  for (int row = 0; row < numRows; row++) {
+		  for (int col = 0; col < numBlocksPerRow; col++) {
+			  if(blocks[row][col] == 0 && startGame){
+				  collapsedBlocks += 1;
+			  }
+			  if (collapsedBlocks == (numRows * numBlocksPerRow)){
+				  level += 1;
+				  LCD_clrScr();
+				  ball_pos_x = platform_pos + (platform_length/2);
+				  ball_pos_y = PLATFORM_LVL-2;
+				  startGame = false;
+				  flagNextLevel = true;
+				  LCD_printLevelUp();
+				  temp_screen = 17;
+				  break;
+			  }
+			  else if (collapsedBlocks == (numRows * numBlocksPerRow) - 1){
+				  przedostatniBloczek = true;
+			  }
+		  }
+	  }
+
+
 	  // Narysuj inny typ bloczka na ostatnim miescu odbicia
-	  if(!odbicieBloczek && draw_new_block){
+	  if((!odbicieBloczek && draw_new_block) && !flagNextLevel){
+		  licznik++;
 		  draw_new_block = false;
 		  LCD_drawEmptyRectangle(last_x_block, last_y_block, last_x_block + blockWidth, last_y_block - blockHeight);
 		  switch (new_block_type) {
@@ -324,21 +334,30 @@ int main(void)
 				break;
 		}
 	  }
+
 	  //Wyswietl ekran konca gry
 	  if(flagOverScreen){
 		  flagOverScreen = false;
 		  overGame = true;
 		  startGame = false;
 		  temp_screen = 18;
-		  licznik++;
+		  scoreint = 0;
 		  ball_pos_x = platform_pos + (platform_length/2);
 		  ball_pos_y = PLATFORM_LVL-2;
 		  LCD_clrScr();
 		  LCD_printGameOver();
 	  }
-	  //randomNumber = HAL_RNG_GetRandomNumber(&hrng);
-	  printf("ekran: %d\t licznik: %d\t startGame: %d \t initGame: %d \t overGame: %d \t x: %d \t y: %d \n",screen, licznik, startGame, initGame, overGame, ball_pos_x, ball_pos_y);
 
+
+
+
+	  //randomNumber = HAL_RNG_GetRandomNumber(&hrng);
+	  for (int i = 0; i < 6; i++){
+		  printf("%d, ",randomArray[i]);
+	  }
+	  printf("\t");
+	  //printf("ekran: %d\t licznik: %d\t startGame: %d \t initGame: %d \t overGame: %d \t x: %d \t y: %d \n",screen, licznik, startGame, initGame, overGame, ball_pos_x, ball_pos_y);
+	  printf("przedostatni: %d \t typ: %d \t x: %d \t y: %d \t number: %d \n",przedostatniBloczek,last_level_type_block, last_level_x_block, last_level_y_block, numerBloczkaLevel);
   }
   {
     /* USER CODE END WHILE */
@@ -913,6 +932,12 @@ int __io_putchar(int ch){
 	HAL_UART_Transmit(&huart2, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
 	return 1;
 }
+void randomArrayGen(){
+	for (uint8_t i = 0; i < 6; i++){
+		  randomArray[i] = HAL_RNG_GetRandomNumber(&hrng)%21;
+		  printf("%d\n",randomArray[i]);
+	  }
+}
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if ((htim == &htim4 && startGame) && level == 1){
@@ -942,12 +967,38 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   		LCD_drawBall(ball_pos_x-1, ball_pos_y, 0);
   		LCD_drawBall(ball_pos_x+1, ball_pos_y, 0);
   		LCD_drawBall(ball_pos_x, ball_pos_y, 1);
+  		/*if(last_level_x_block!=0){
+			if(last_level_type_block == 3){
+				drawed3 = true;
+				LCD_drawFilledRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
+			}
+			if(last_level_type_block == 2){
+				drawed2 = true;
+				LCD_drawChequeredRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
+			}
+			if(last_level_type_block == 1){
+				drawed1 = true;
+				LCD_drawFilledRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
+			}
+		}*/
+  		LCD_drawRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
+  		for (int i = 0; i < 6; i++){
+			if(randomArray[i] == numerBloczkaLevel){
+				if (randomArray[i]%2==0){
+					//blocks[row][col] = 3; // rysuj pelny bloczek
+					LCD_drawFilledRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
+				}
+				else{
+					//blocks[row][col] = 2; // rysuj kratkowany bloczek
+					LCD_drawChequeredRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
+				}
+				break;
+			}
+		}
   	  }
 
   }
-  //if (htim == &htim2){
-	  //menu();
-  //}
+
   if (htim == &htim2 && (!initGame && !startGame && !overGame)){
 	  if(JOY0<=1000)
 	  		{
@@ -1202,11 +1253,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  	  break;
 	  	  case 17:
 	  		initGame = true;
+	  		flagNextLevel = false;
+	  		randomArrayGen();
 	  		LCD_clrScr();
-	  		//ta linijka psula, nie wiem czemu :(
-	  		//LCD_drawBall((platform_pos + platform_length)/2, PLATFORM_LVL-2, 1);
 	  		LCD_drawHLine(platform_pos, PLATFORM_LVL, platform_length); // poczatkowe polozenie platformy
 	  		LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos + platform_length, PLATFORM_LVL);
+
 
 	  	  // Inicjalizuj stan bloczkow
 	  		switch(plansza){
@@ -1239,7 +1291,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 				  // Rysuj wynik po prawej
 				  LCD_drawVLine(70, 0, 48);
 				  LCD_refreshScr();
-				  LCD_print("0", 72, 0);
+				  LCD_goXY(72, 0);
+				  sprintf(score, "%d", scoreint);
+				  LCD_print(score, 72, 0);
 				  numerBloczka = 0;
 				  break;
 
@@ -1273,7 +1327,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 					  // Rysuj wynik po prawej
 					  LCD_drawVLine(70, 0, 48);
 					  LCD_refreshScr();
-					  LCD_print("0", 72, 0);
+					  LCD_goXY(72, 0);
+					  sprintf(score, "%d", scoreint);
+					  LCD_print(score, 72, 0);
 					  numerBloczka = 0;
 					  break;
 	  		}
@@ -1416,7 +1472,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 			 	screen=temp_screen;
 		 }
 }
-void menu(){
+/*void menu(){
 	switch(screen)
 		  	  	 {
 		  	  	 case 1:
@@ -1643,7 +1699,7 @@ void menu(){
 		  			LCD_printLevelUp();
 		  			break;
 		  	  	 }
-}
+}*/
 
 /* USER CODE END 4 */
 
