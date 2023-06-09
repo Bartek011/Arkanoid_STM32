@@ -75,8 +75,8 @@ uint8_t licznik = 0;
 uint8_t blockWidth = 8;
 uint8_t blockHeight = 5;
 uint8_t gap = 2; // Przerwa pomiędzy bloczkami
-uint8_t numBlocksPerRow = 1; //default 7
-uint8_t numRows = 1; //default 3
+uint8_t numBlocksPerRow = 7; //default 7
+uint8_t numRows = 3; //default 3
 uint8_t topOffset = 5; // Odległość od górnej krawędzi ekranu
 uint8_t blocks[3][7]; // Tablica do przechowywania stanu bloczków
 uint8_t numerBloczka = 0;
@@ -116,7 +116,7 @@ uint8_t plansza = 0;
  * plaszna = 1 -> szachownica,
  * plansza = 2 -> losowa,
  */
-uint8_t randomArray[6];
+uint8_t randomArray[8];
 uint8_t randomNumber = 0;
 uint8_t level = 1;
 /* USER CODE END PV */
@@ -272,6 +272,12 @@ int main(void)
 	        		  new_block_type = 2;
 	        		  scoreint += 1;
 	        	  }
+	        	  // wykrycie odbicia od bonusowego bloczka
+	        	  else if (blocks[row][col] == 4){
+	        		  new_block_type = 1;
+	        		  scoreint += 1;
+	        		  blocks[row][col] = 2;
+	        	  }
 	        	  blocks[row][col] -= 1;
 
 	            sprintf(score, "%d", scoreint);
@@ -314,7 +320,7 @@ int main(void)
 					  temp_screen = 20;
 					  break;
 				  }
-				  if(level < 3){
+				  else if(level < 3){
 					  level += 1;
 				  }
 				  LCD_clrScr();
@@ -345,7 +351,9 @@ int main(void)
 				break;
 			case 2:
 				LCD_drawChequeredRectangle(last_x_block, last_y_block, last_x_block + blockWidth, last_y_block - blockHeight);
-			default:
+				break;
+			case 3:
+				LCD_drawFilledRectangle(last_x_block, last_y_block, last_x_block + blockWidth, last_y_block - blockHeight);
 				break;
 		}
 	  }
@@ -355,6 +363,7 @@ int main(void)
 		  flagOverScreen = false;
 		  overGame = true;
 		  startGame = false;
+		  level = 1;
 		  temp_screen = 18;
 		  screen = 18;
 		  scoreint = 0;
@@ -372,7 +381,7 @@ int main(void)
 
 
 	  //randomNumber = HAL_RNG_GetRandomNumber(&hrng);
-	  for (int i = 0; i < 6; i++){
+	  for (int i = 0; i < 8; i++){
 		  printf("%d, ",randomArray[i]);
 	  }
 	  printf("\t");
@@ -953,10 +962,24 @@ int __io_putchar(int ch){
 	return 1;
 }
 void randomArrayGen(){
-	for (uint8_t i = 0; i < 6; i++){
-		  randomArray[i] = HAL_RNG_GetRandomNumber(&hrng)%21;
-		  printf("%d\n",randomArray[i]);
-	  }
+    uint8_t i, j;
+    uint8_t tempNumbers[21];
+    uint8_t temp;
+    // Wypełniamy tablicę wartościami od 1 do 21
+    for (i = 0; i < 21; i++) {
+        tempNumbers[i] = i + 1;
+    }
+    // Mieszamy tablicę tempNumbers
+    for (i = 0; i < 21; i++) {
+        j = HAL_RNG_GetRandomNumber(&hrng) % 21;
+        temp = tempNumbers[i];
+        tempNumbers[i] = tempNumbers[j];
+        tempNumbers[j] = temp;
+    }
+    // Wypełniamy randomArray pierwszymi 8 unikalnymi liczbami z tablicy tempNumbers
+    for (i = 0; i < 8; i++){
+        randomArray[i] = tempNumbers[i];
+    }
 }
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if ((htim == &htim4 && startGame) && level == 1){
@@ -989,11 +1012,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   		LCD_drawRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
   		for (int i = 0; i < 6; i++){
 			if(randomArray[i] == numerBloczkaLevel){
-				if (randomArray[i]%2==0){
+				if (randomArray[i]%3==0){
 					LCD_drawFilledRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
 				}
-				else{
+				else if (randomArray[i]%3==1){
 					LCD_drawChequeredRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
+				}
+				else if (randomArray[i]%3 == 2){
+					LCD_drawBonusRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
 				}
 				break;
 			}
@@ -1273,15 +1299,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 							blocks[row][col] = 1; // Wszystkie bloczki są widoczne na początku
 							LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 
-							for (int i = 0; i < 6; i++){
+							for (int i = 0; i < 8; i++){
 								if(randomArray[i] == numerBloczka){
-									if (randomArray[i]%2==0){
+									if (randomArray[i]%3==0){
 										blocks[row][col] = 3; // rysuj pelny bloczek
 										LCD_drawFilledRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 									}
-									else{
+									else if (randomArray[i]%3==1){
 										blocks[row][col] = 2; // rysuj kratkowany bloczek
 										LCD_drawChequeredRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+									}
+									else if(randomArray[i]%3==2){
+										blocks[row][col] = 4; // rysuj bonusowy bloczek
+										LCD_drawBonusRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 									}
 									break;
 								}
@@ -1308,15 +1338,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 								int blockY = row * (blockHeight + gap) + topOffset;
 								LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 
-								for (int i = 0; i < 6; i++){
+								for (int i = 0; i < 8; i++){
 									if(randomArray[i] == numerBloczka){
-										if (randomArray[i]%2==0){
+										if (randomArray[i]%3==0){
 											blocks[row][col] = 3; // rysuj pelny bloczek
 											LCD_drawFilledRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 										}
-										else{
+										else if(randomArray[i]%3==1){
 											blocks[row][col] = 2; // rysuj kratkowany bloczek
 											LCD_drawChequeredRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+										}
+										else if(randomArray[i]%3==2){
+											blocks[row][col] = 4; // rysuj bonusowy bloczek
+											LCD_drawBonusRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 										}
 										break;
 									}

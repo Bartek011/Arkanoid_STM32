@@ -401,6 +401,18 @@ void LCD_drawFilledRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
 	}
 	LCD_refreshArea(x1, y2, x2, y1);
 }
+void LCD_drawBonusRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
+	LCD_drawHLine(x1, y1, x2-x1);
+	LCD_drawVLine(x2, y2, abs(y2-y1));
+	LCD_drawHLine(x1, y2, x2-x1);
+	LCD_drawVLine(x1, y2, abs(y2-y1));
+	for (int j = (x1+2); j< (x2-1); j++){
+		if(j%2==0){
+			LCD_drawVLine(j, y2, abs(y2-y1));
+		}
+	}
+	LCD_refreshArea(x1, y2, x2, y1);
+}
 
 void LCD_drawChequeredRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2){
 	LCD_drawHLine(x1, y1, x2-x1);
