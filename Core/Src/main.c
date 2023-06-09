@@ -75,7 +75,7 @@ uint8_t licznik = 0;
 uint8_t blockWidth = 8;
 uint8_t blockHeight = 5;
 uint8_t gap = 2; // Przerwa pomiędzy bloczkami
-uint8_t numBlocksPerRow = 7; //default 7
+uint8_t numBlocksPerRow = 1; //default 7
 uint8_t numRows = 1; //default 3
 uint8_t topOffset = 5; // Odległość od górnej krawędzi ekranu
 uint8_t blocks[3][7]; // Tablica do przechowywania stanu bloczków
@@ -302,14 +302,29 @@ int main(void)
 				  collapsedBlocks += 1;
 			  }
 			  if (collapsedBlocks == (numRows * numBlocksPerRow)){
-				  level += 1;
+				  //wygrana
+				  if(level == 3){
+					  //LCD_clrScr();
+					  //LCD_printVictory();
+					  //sprintf(score, "%d", scoreint);
+					  //LCD_print(score, 36, 4);
+					  startGame = false;
+					  level = 1;
+					  screen = 20;
+					  temp_screen = 20;
+					  break;
+				  }
+				  if(level < 3){
+					  level += 1;
+				  }
 				  LCD_clrScr();
+				  LCD_printLevelUp();
 				  ball_pos_x = platform_pos + (platform_length/2);
 				  ball_pos_y = PLATFORM_LVL-2;
 				  startGame = false;
 				  flagNextLevel = true;
-				  LCD_printLevelUp();
-				  temp_screen = 17;
+				  screen = 19;
+				  temp_screen = 19;
 				  break;
 			  }
 			  else if (collapsedBlocks == (numRows * numBlocksPerRow) - 1){
@@ -341,11 +356,16 @@ int main(void)
 		  overGame = true;
 		  startGame = false;
 		  temp_screen = 18;
+		  screen = 18;
 		  scoreint = 0;
 		  ball_pos_x = platform_pos + (platform_length/2);
 		  ball_pos_y = PLATFORM_LVL-2;
 		  LCD_clrScr();
 		  LCD_printGameOver();
+		  /*LCD_printVictory();
+		  sprintf(score, "%d", scoreint);
+		  LCD_print(score, 36, 4);*/
+
 	  }
 
 
@@ -356,8 +376,8 @@ int main(void)
 		  printf("%d, ",randomArray[i]);
 	  }
 	  printf("\t");
-	  //printf("ekran: %d\t licznik: %d\t startGame: %d \t initGame: %d \t overGame: %d \t x: %d \t y: %d \n",screen, licznik, startGame, initGame, overGame, ball_pos_x, ball_pos_y);
-	  printf("przedostatni: %d \t typ: %d \t x: %d \t y: %d \t number: %d \n",przedostatniBloczek,last_level_type_block, last_level_x_block, last_level_y_block, numerBloczkaLevel);
+	  printf("ekran: %d\t licznik: %d\t startGame: %d \t initGame: %d \t overGame: %d \t x: %d \t y: %d \n",screen, licznik, startGame, initGame, overGame, ball_pos_x, ball_pos_y);
+	  //printf("przedostatni: %d \t typ: %d \t x: %d \t y: %d \t number: %d \n",przedostatniBloczek, last_level_type_block, last_level_x_block, last_level_y_block, numerBloczkaLevel);
   }
   {
     /* USER CODE END WHILE */
@@ -938,7 +958,6 @@ void randomArrayGen(){
 		  printf("%d\n",randomArray[i]);
 	  }
 }
-
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if ((htim == &htim4 && startGame) && level == 1){
 		BallMovement();
@@ -967,38 +986,20 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   		LCD_drawBall(ball_pos_x-1, ball_pos_y, 0);
   		LCD_drawBall(ball_pos_x+1, ball_pos_y, 0);
   		LCD_drawBall(ball_pos_x, ball_pos_y, 1);
-  		/*if(last_level_x_block!=0){
-			if(last_level_type_block == 3){
-				drawed3 = true;
-				LCD_drawFilledRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
-			}
-			if(last_level_type_block == 2){
-				drawed2 = true;
-				LCD_drawChequeredRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
-			}
-			if(last_level_type_block == 1){
-				drawed1 = true;
-				LCD_drawFilledRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
-			}
-		}*/
   		LCD_drawRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
   		for (int i = 0; i < 6; i++){
 			if(randomArray[i] == numerBloczkaLevel){
 				if (randomArray[i]%2==0){
-					//blocks[row][col] = 3; // rysuj pelny bloczek
 					LCD_drawFilledRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
 				}
 				else{
-					//blocks[row][col] = 2; // rysuj kratkowany bloczek
 					LCD_drawChequeredRectangle(last_level_x_block, last_level_y_block, last_level_x_block + blockWidth, last_level_y_block - blockHeight);
 				}
 				break;
 			}
 		}
   	  }
-
   }
-
   if (htim == &htim2 && (!initGame && !startGame && !overGame)){
 	  if(JOY0<=1000)
 	  		{
@@ -1057,7 +1058,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  				 		 break;
 	  				 }
 	  				 screen=temp_screen;
-
 	  		}
 	  	if(JOY0>=3000)
 	  	{
@@ -1333,18 +1333,24 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 					  numerBloczka = 0;
 					  break;
 	  		}
-
-	  		break;/*
+	  		break;
 	  		//Ekran konca gry
 	  		case 18:
 	  			LCD_clrScr();
 	  			LCD_printGameOver();
 	  			break;
-			//Ekran nastepnego poziomu
+	  		//Ekran level Up
 	  		case 19:
 	  			LCD_clrScr();
 	  			LCD_printLevelUp();
-	  			break;*/
+	  			break;
+			//Ekran wygranej
+	  		case 20:
+	  			LCD_clrScr();
+	  			LCD_printVictory();
+	  			sprintf(score, "%d", scoreint);
+	  			LCD_print(score, 36, 4);
+	  			break;
 	  	  	 }
 
   }
@@ -1409,15 +1415,24 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 				 	 case 1:
 				 		 temp_screen = 17;
 						 break;
+					// Gra
 				 	 case 17:
 				 		 startGame = true;
 						 initGame = false;
 						 temp_screen = 17;
 				 		 break;
+				 	//Ekran konca gry
 				 	case 18:
 						 overGame = false;
 						 temp_screen = 1;
 						 break;
+					 //Ekran level up
+				 	case 19:
+				 		temp_screen = 17;
+				 		break;
+					//Ekran wygranej
+				 	case 20:
+				 		temp_screen = 1;
 				 	 }
 				 	screen=temp_screen;
 	}
@@ -1468,238 +1483,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 			 		 overGame = false;
 			 		 temp_screen = 1;
 			 		 break;
+			 	 case 20:
+			 		 temp_screen = 1;
+			 		 break;
 			 	 }
 			 	screen=temp_screen;
 		 }
 }
-/*void menu(){
-	switch(screen)
-		  	  	 {
-		  	  	 case 1:
-		  	  LCD_clrScr();
-		  	  LCD_invertText(1);
-		  	  LCD_print("1.START", 0, 0);
-		  	  LCD_invertText(0);
-		  	  LCD_print("2.PLANSZA", 0, 1);
-		  	  LCD_print("3.POZIOM", 0, 2);
-		  	  LCD_print("4.GRACZE", 0, 3);
-		  	  LCD_print("5.REKORDY", 0, 4);
-		  	  break;
-		  	  	 case 2:
-		  	  LCD_print("1.START", 0, 0);
-		  	  LCD_invertText(1);
-		  	  LCD_print("2.PLANSZA", 0, 1);
-		  	  LCD_invertText(0);
-		  	  LCD_print("3.POZIOM", 0, 2);
-		  	  LCD_print("4.GRACZE", 0, 3);
-		  	  LCD_print("5.REKORDY", 0, 4);
-		  	  break;
-		  	  	 case 3:
-		  	  LCD_print("1.START", 0, 0);
-		  	  LCD_print("2.PLANSZA", 0, 1);
-		  	  LCD_invertText(1);
-		  	  LCD_print("3.POZIOM", 0, 2);
-		  	  LCD_invertText(0);
-		  	  LCD_print("4.GRACZE", 0, 3);
-		  	  LCD_print("5.REKORDY", 0, 4);
-		  	  break;
-		  	  	 case 4:
-		  	  LCD_print("1.START", 0, 0);
-		  	  LCD_print("2.PLANSZA", 0, 1);
-		  	  LCD_print("3.POZIOM", 0, 2);
-		  	  LCD_invertText(1);
-		  	  LCD_print("4.GRACZE", 0, 3);
-		  	  LCD_invertText(0);
-		  	  LCD_print("5.REKORDY", 0, 4);
-		  	  break;
-		  	  	 case 5:
-		  	  LCD_print("1.START", 0, 0);
-		  	  LCD_print("2.PLANSZA", 0, 1);
-		  	  LCD_print("3.POZIOM", 0, 2);
-		  	  LCD_print("4.GRACZE", 0, 3);
-		  	  LCD_invertText(1);
-		  	  LCD_print("5.REKORDY", 0, 4);
-		  	  LCD_invertText(0);
-		  	     break;
-		  	  	 case 6:
-		  	  LCD_clrScr();
-		  	  LCD_invertText(1);
-		  	  LCD_print("1.PELNA", 0, 0);
-		  	  LCD_invertText(0);
-		  	  LCD_print("2.SZACHOWNICA", 0, 1);
-		  	  LCD_print("3.LOSOWA", 0, 2);
-		  	  LCD_print("4.COFNIJ", 0, 3);
-		  	  break;
-		  	  	 case 7:
-		  	  LCD_print("1.PELNA", 0, 0);
-		  	  LCD_invertText(1);
-		  	  LCD_print("2.SZACHOWNICA", 0, 1);
-		  	  LCD_invertText(0);
-		  	  LCD_print("3.LOSOWA", 0, 2);
-		  	  LCD_print("4.COFNIJ", 0, 3);
-		  	  break;
-		  	  	 case 8:
-		  	  LCD_print("1.PELNA", 0, 0);
-		  	  LCD_print("2.SZACHOWNICA", 0, 1);
-		  	  LCD_invertText(1);
-		  	  LCD_print("3.LOSOWA", 0, 2);
-		  	  LCD_invertText(0);
-		  	  LCD_print("4.COFNIJ", 0, 3);
-		  	  break;
-		  	  	 case 9:
-		  	  LCD_print("1.PELNA", 0, 0);
-		  	  LCD_print("2.SZACHOWNICA", 0, 1);
-		  	  LCD_print("3.LOSOWA", 0, 2);
-		  	  LCD_invertText(1);
-		  	  LCD_print("4.COFNIJ", 0, 3);
-		  	  LCD_invertText(0);
-		  	  break;
-		  	  	 case 10:
-		  	  LCD_clrScr();
-		  	  LCD_invertText(1);
-		  	  LCD_print("1.PIERWSZY", 0, 0);
-		  	  LCD_invertText(0);
-		  	  LCD_print("2.DRUGI", 0, 1);
-		  	  LCD_print("3.TRZECI", 0, 2);
-		  	  LCD_print("4.COFNIJ", 0, 3);
-		  	  break;
-		  	  	 case 11:
-		  	  LCD_print("1.PIERWSZY", 0, 0);
-		  	  LCD_invertText(1);
-		  	  LCD_print("2.DRUGI", 0, 1);
-		  	  LCD_invertText(0);
-		  	  LCD_print("3.TRZECI", 0, 2);
-		  	  LCD_print("4.COFNIJ", 0, 3);
-		  	  break;
-		  	  	 case 12:
-		  	  LCD_print("1.PIERWSZY", 0, 0);
-		  	  LCD_print("2.DRUGI", 0, 1);
-		  	  LCD_invertText(1);
-		  	  LCD_print("3.TRZECI", 0, 2);
-		  	  LCD_invertText(0);
-		  	  LCD_print("4.COFNIJ", 0, 3);
-		  	  break;
-		  	  	 case 13:
-		  	  LCD_print("1.PIERWSZY", 0, 0);
-		  	  LCD_print("2.DRUGI", 0, 1);
-		  	  LCD_print("3.TRZECI", 0, 2);
-		  	  LCD_invertText(1);
-		  	  LCD_print("4.COFNIJ", 0, 3);
-		  	  LCD_invertText(0);
-		  	  break;
-		  	  	 case 14:
-		  	  LCD_clrScr();
-		  	  LCD_invertText(1);
-		  	  LCD_print("1.JEDEN", 0, 0);
-		  	  LCD_invertText(0);
-		  	  LCD_print("2.DWOCH", 0, 1);
-		  	  LCD_print("3.COFNIJ", 0, 2);
-		  	  break;
-		  	  	 case 15:
-		  	  LCD_print("1.JEDEN", 0, 0);
-		  	  LCD_invertText(1);
-		  	  LCD_print("2.DWOCH", 0, 1);
-		  	  LCD_invertText(0);
-		  	  LCD_print("3.COFNIJ", 0, 2);
-		  	  break;
-		  	  	 case 16:
-		  	  LCD_print("1.JEDEN", 0, 0);
-		  	  LCD_print("2.DWOCH", 0, 1);
-		  	  LCD_invertText(1);
-		  	  LCD_print("3.COFNIJ", 0, 2);
-		  	  LCD_invertText(0);
-		  	  break;
-		  	  case 17:
-		  		initGame = true;
-		  		LCD_clrScr();
-		  		//ta linijka psula, nie wiem czemu :(
-		  		//LCD_drawBall((platform_pos + platform_length)/2, PLATFORM_LVL-2, 1);
-		  		LCD_drawHLine(platform_pos, PLATFORM_LVL, platform_length); // poczatkowe polozenie platformy
-		  		LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos + platform_length, PLATFORM_LVL);
 
-		  	  // Inicjalizuj stan bloczkow
-		  		switch(plansza){
-		  		// Rysowanie pelnej planszy
-		  		case 0:
-		  			for (int row = 0; row < numRows; row++) {
-						for (int col = 0; col < numBlocksPerRow; col++) {
-								numerBloczka++;
-								int blockX = col * (blockWidth + gap);
-								int blockY = row * (blockHeight + gap) + topOffset;
-
-								blocks[row][col] = 1; // Wszystkie bloczki są widoczne na początku
-								LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-
-								for (int i = 0; i < 6; i++){
-									if(randomArray[i] == numerBloczka){
-										if (randomArray[i]%2==0){
-											blocks[row][col] = 3; // rysuj pelny bloczek
-											LCD_drawFilledRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-										}
-										else{
-											blocks[row][col] = 2; // rysuj kratkowany bloczek
-											LCD_drawChequeredRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-										}
-										break;
-									}
-								}
-						}
-					  }
-					  // Rysuj wynik po prawej
-					  LCD_drawVLine(70, 0, 48);
-					  LCD_refreshScr();
-					  LCD_print("0", 72, 0);
-					  numerBloczka = 0;
-					  break;
-
-					  // Rysowanie szachownicy planszy
-		  		case 1:
-		  			for (int row = 0; row < numRows; row++) {
-							for (int col = 0; col < numBlocksPerRow; col++) {
-								if((row+col)%2==0){
-									numerBloczka++;
-									blocks[row][col] = 1; // Widoczny co drugi bloczek
-									int blockX = col * (blockWidth + gap);
-									int blockY = row * (blockHeight + gap) + topOffset;
-									LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-
-									for (int i = 0; i < 6; i++){
-										if(randomArray[i] == numerBloczka || randomArray[i] == numerBloczka + 1){
-											if (randomArray[i]%2==0){
-												blocks[row][col] = 3; // rysuj pelny bloczek
-												LCD_drawFilledRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-											}
-											else{
-												blocks[row][col] = 2; // rysuj kratkowany bloczek
-												LCD_drawChequeredRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
-											}
-											break;
-										}
-									}
-								}
-							}
-						  }
-						  // Rysuj wynik po prawej
-						  LCD_drawVLine(70, 0, 48);
-						  LCD_refreshScr();
-						  LCD_print("0", 72, 0);
-						  numerBloczka = 0;
-						  break;
-		  		}
-
-		  		break;
-		  		//Ekran konca gry
-		  		case 18:
-		  			LCD_clrScr();
-		  			LCD_printGameOver();
-		  			break;
-				//Ekran nastepnego poziomu
-		  		case 19:
-		  			LCD_clrScr();
-		  			LCD_printLevelUp();
-		  			break;
-		  	  	 }
-}*/
 
 /* USER CODE END 4 */
 
