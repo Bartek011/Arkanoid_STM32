@@ -91,7 +91,9 @@ uint8_t ball_pos_bounce_y = 0; //Pozycja y pilki przy odbiciu od ostatniego bloc
 uint8_t last_level_x_block = 0; //Pozcyja ostatniego zbitego bloczka w poziomie
 uint8_t last_level_y_block = 0; // Pozycja ostatniego zbitego bloczka w poziomie
 uint8_t last_level_type_block = 1; //Typ ostatniego zbitego bloczka w poziomie
-
+uint8_t bonusHits = 0;	//Licznik uderzen na niestandardowej platformie
+bool flagPlatformLong = false; //flaga czy platforma wydluzona
+bool flagPlatformShort = false; //flaga czy platforma skrocona
 //Wynik
 char score[3];
 uint8_t scoreint = 0;
@@ -106,9 +108,7 @@ bool overGame = false;
 bool flagOverScreen = false;
 bool flagNextLevel = false;
 bool przedostatniBloczek = false;
-bool drawed1 = false;
-bool drawed2 = false;
-bool drawed3 = false;
+
 
 //Konfiguracja gry
 uint8_t plansza = 0;
@@ -137,6 +137,8 @@ static void MX_TIM7_Init(void);
 /* USER CODE BEGIN PFP */
 static void PlatformMoveRight(int startPoint, int length);
 static void PlatformMoveLeft(int startPoint, int length);
+static void PlatformExtend(int startPoint);
+static void PlatformShorten(int startPoint);
 static void BallMoveLeftUp(int x, int y);
 static void BallMovement();
 void randomArrayGen();
@@ -247,6 +249,9 @@ int main(void)
 	          if ((ball_pos_x + 1) >= blockX && (ball_pos_x - 1) <= (blockX + blockWidth) && (ball_pos_y - 1) <= blockY && (ball_pos_y + 1) >= (blockY - blockHeight) && !odbicieBloczek) {
 	        	  odbicieBloczek  = true;
 	        	  draw_new_block = true;
+	        	  if (flagPlatformLong || flagPlatformShort){
+	        		bonusHits++;
+	        	  }
 	        	  ball_pos_bounce_x = ball_pos_x;
 	        	  ball_pos_bounce_y = ball_pos_y;
 	        	  // Pozycja bloczka do pozniejszego rysowania
@@ -277,6 +282,19 @@ int main(void)
 	        		  new_block_type = 1;
 	        		  scoreint += 1;
 	        		  blocks[row][col] = 2;
+	        		  bonusHits = 0;
+	        		  //wydluz platforme
+	        		  if (HAL_RNG_GetRandomNumber(&hrng)%2 == 0 && !flagPlatformLong){
+	        			  PlatformExtend(platform_pos);
+	        			  flagPlatformLong = true;
+	        		  }
+	        		  //skroc platforme
+	        		  else if(!flagPlatformShort){
+	        			  PlatformShorten(platform_pos);
+	        			  flagPlatformShort = true;
+	        		  }
+
+
 	        	  }
 	        	  blocks[row][col] -= 1;
 
@@ -358,6 +376,20 @@ int main(void)
 		}
 	  }
 
+	  //powrot do normalnej platformy po 3 zbiciach
+	  if (bonusHits == 3 && (flagPlatformLong || flagPlatformShort)){
+		  if(flagPlatformLong){
+			  flagPlatformLong = false;
+			  PlatformShorten(platform_pos);
+		  }
+		  if(flagPlatformShort){
+			  flagPlatformShort = false;
+			  PlatformExtend(platform_pos);
+		  }
+		  bonusHits = 0;
+	  }
+
+
 	  //Wyswietl ekran konca gry
 	  if(flagOverScreen){
 		  flagOverScreen = false;
@@ -381,12 +413,14 @@ int main(void)
 
 
 	  //randomNumber = HAL_RNG_GetRandomNumber(&hrng);
-	  for (int i = 0; i < 8; i++){
-		  printf("%d, ",randomArray[i]);
-	  }
-	  printf("\t");
-	  printf("ekran: %d\t licznik: %d\t startGame: %d \t initGame: %d \t overGame: %d \t x: %d \t y: %d \n",screen, licznik, startGame, initGame, overGame, ball_pos_x, ball_pos_y);
+	  //for (int i = 0; i < 8; i++){
+		  //printf("%d, ",randomArray[i]);
+	  //}
+	  //printf("\t");
+	  //printf("ekran: %d\t licznik: %d\t startGame: %d \t initGame: %d \t overGame: %d \t x: %d \t y: %d \n",screen, licznik, startGame, initGame, overGame, ball_pos_x, ball_pos_y);
 	  //printf("przedostatni: %d \t typ: %d \t x: %d \t y: %d \t number: %d \n",przedostatniBloczek, last_level_type_block, last_level_x_block, last_level_y_block, numerBloczkaLevel);
+	  //printf("poz: %d \t length: %d \t flaga: %d\n", platform_pos, platform_length, flagPlatformExtend);
+	  printf("bonusHits: %d \t flagSHORT: %d \t flagLONG: %d \n", bonusHits, flagPlatformShort, flagPlatformLong);
   }
   {
     /* USER CODE END WHILE */
@@ -639,7 +673,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 7999;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 332;
+  htim3.Init.Period = 180; //default 333
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -906,6 +940,42 @@ static void PlatformMoveLeft(int startPoint, int length){
 	LCD_refreshArea(startPoint+length, PLATFORM_LVL, startPoint+length+1, PLATFORM_LVL);
 	LCD_setPixel(startPoint-1, PLATFORM_LVL, 1); // zapal lewy skrajny pxl
 	LCD_refreshArea(startPoint-1, PLATFORM_LVL, startPoint+length+1, PLATFORM_LVL);
+}
+static void PlatformExtend(int startPoint){
+	platform_length += 10;
+	if (startPoint<5){
+		platform_pos = 0;
+		for(int i = 0; i<platform_length; i++){
+			LCD_setPixel(i, PLATFORM_LVL, 1);
+		}
+	}
+	else if((platform_pos-5) + platform_length >= 68){
+		platform_pos = 68 - platform_length;
+		for(int i = 68; i>=platform_pos; i--){
+			LCD_setPixel(i, PLATFORM_LVL, 1);
+		}
+	}
+	else{
+		platform_pos -= 5;
+		for (int i = platform_pos; i<(platform_pos+platform_length); i++){
+			LCD_setPixel(i, PLATFORM_LVL, 1);
+		}
+	}
+	LCD_refreshArea(platform_pos, PLATFORM_LVL, platform_pos+platform_length, PLATFORM_LVL);
+}
+static void PlatformShorten(int startPoint){
+	platform_length -= 10;
+	platform_pos += 5;
+	for (int i = platform_pos; i>= platform_pos -5; i--){
+		LCD_setPixel(i, PLATFORM_LVL, 0);
+	}
+	for (int i = platform_pos; i<(platform_pos + platform_length); i++){
+		LCD_setPixel(i, PLATFORM_LVL, 1);
+	}
+	for (int i = (platform_pos + platform_length); i<=(platform_pos + platform_length + 5); i++){
+		LCD_setPixel(i, PLATFORM_LVL, 0);
+	}
+	LCD_refreshArea(platform_pos-5, PLATFORM_LVL, platform_pos+platform_length+6, PLATFORM_LVL);
 }
 static void BallMoveLeftUp(int x, int y){
 	int *newX = &ball_pos_x;
