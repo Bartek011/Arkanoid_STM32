@@ -74,8 +74,8 @@ uint8_t licznik = 0;
 // Prostokątne bloczki
 uint8_t blockWidth = 8;
 uint8_t blockHeight = 5;
-uint8_t gap = 2; // Przerwa pomiędzy bloczkami
-uint8_t numBlocksPerRow = 7; //default 7
+uint8_t gap = 4; // Przerwa pomiędzy bloczkami
+uint8_t numBlocksPerRow = 1; //default 7
 uint8_t numRows = 3; //default 3
 uint8_t topOffset = 5; // Odległość od górnej krawędzi ekranu
 uint8_t blocks[3][7]; // Tablica do przechowywania stanu bloczków
@@ -94,6 +94,7 @@ uint8_t last_level_type_block = 1; //Typ ostatniego zbitego bloczka w poziomie
 uint8_t bonusHits = 0;	//Licznik uderzen na niestandardowej platformie
 bool flagPlatformLong = false; //flaga czy platforma wydluzona
 bool flagPlatformShort = false; //flaga czy platforma skrocona
+bool blockPlatform = false;
 //Wynik
 char score[3];
 uint8_t scoreint = 0;
@@ -142,6 +143,8 @@ static void PlatformShorten(int startPoint);
 static void BallMoveLeftUp(int x, int y);
 static void BallMovement();
 void randomArrayGen();
+static void RefreshScore();
+static void Shuffle(int array[numRows][numBlocksPerRow]);
 int __io_putchar(int ch); //debug uart
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim);
@@ -249,6 +252,7 @@ int main(void)
 	          if ((ball_pos_x + 1) >= blockX && (ball_pos_x - 1) <= (blockX + blockWidth) && (ball_pos_y - 1) <= blockY && (ball_pos_y + 1) >= (blockY - blockHeight) && !odbicieBloczek) {
 	        	  odbicieBloczek  = true;
 	        	  draw_new_block = true;
+	        	  blockPlatform = true;
 	        	  if (flagPlatformLong || flagPlatformShort){
 	        		bonusHits++;
 	        	  }
@@ -298,8 +302,7 @@ int main(void)
 	        	  }
 	        	  blocks[row][col] -= 1;
 
-	            sprintf(score, "%d", scoreint);
-	            LCD_print(score, 72, 0);
+	            RefreshScore();
 
 	            //Wykrycie odbicia od scian bloczkow - zmien kierunek w osi X
 	            if ((ball_pos_x + 1) == blockX || (ball_pos_x - 1) == blockX + blockWidth){
@@ -310,13 +313,13 @@ int main(void)
 	            	ball_dir_y *= -1;
 	            }
 	          }
-
 	        }
 	      }
 	    }
 	  // Sprawdz czy pilka ruszyla sie od momentu odbicia
 	  if(abs(ball_pos_x - ball_pos_bounce_x) != 0 || abs(ball_pos_y - ball_pos_bounce_y) != 0){
 		  odbicieBloczek = false;
+		  blockPlatform = false;
 	  }
 	  //sprawdz czy wszystkie bloczki zbite
 	  collapsedBlocks = 0;
@@ -328,11 +331,10 @@ int main(void)
 			  if (collapsedBlocks == (numRows * numBlocksPerRow)){
 				  //wygrana
 				  if(level == 3){
-					  //LCD_clrScr();
-					  //LCD_printVictory();
-					  //sprintf(score, "%d", scoreint);
-					  //LCD_print(score, 36, 4);
 					  startGame = false;
+					  blockPlatform = false;
+					  bonusHits = 3;
+					  scoreint = 0;
 					  level = 1;
 					  screen = 20;
 					  temp_screen = 20;
@@ -374,9 +376,16 @@ int main(void)
 				LCD_drawFilledRectangle(last_x_block, last_y_block, last_x_block + blockWidth, last_y_block - blockHeight);
 				break;
 		}
+		  /*for (int i = 0; i < numRows; i++){
+			  for (int j = 0; j < numBlocksPerRow; j++){
+				  printf("%d ", blocks[i][j]);
+			  }
+			  printf("\n");
+		  }
+		  printf("\n \n");*/
 	  }
 
-	  //powrot do normalnej platformy po 3 zbiciach
+	  //Powrot do normalnej platformy po 3 zbiciach
 	  if (bonusHits == 3 && (flagPlatformLong || flagPlatformShort)){
 		  if(flagPlatformLong){
 			  flagPlatformLong = false;
@@ -420,7 +429,7 @@ int main(void)
 	  //printf("ekran: %d\t licznik: %d\t startGame: %d \t initGame: %d \t overGame: %d \t x: %d \t y: %d \n",screen, licznik, startGame, initGame, overGame, ball_pos_x, ball_pos_y);
 	  //printf("przedostatni: %d \t typ: %d \t x: %d \t y: %d \t number: %d \n",przedostatniBloczek, last_level_type_block, last_level_x_block, last_level_y_block, numerBloczkaLevel);
 	  //printf("poz: %d \t length: %d \t flaga: %d\n", platform_pos, platform_length, flagPlatformExtend);
-	  printf("bonusHits: %d \t flagSHORT: %d \t flagLONG: %d \n", bonusHits, flagPlatformShort, flagPlatformLong);
+	  //printf("bonusHits: %d \t flagSHORT: %d \t flagLONG: %d \n", bonusHits, flagPlatformShort, flagPlatformLong);
   }
   {
     /* USER CODE END WHILE */
@@ -1051,6 +1060,30 @@ void randomArrayGen(){
         randomArray[i] = tempNumbers[i];
     }
 }
+//Odswiez wynik po prawej stronie ekranu
+static void RefreshScore(){
+	LCD_drawVLine(70, 0, 48);
+	LCD_refreshScr();
+	LCD_goXY(72, 0);
+	sprintf(score, "%d", scoreint);
+	LCD_print(score, 72, 0);
+}
+
+//Zmien pozycje bloczkow
+static void Shuffle(int blocks[numRows][numBlocksPerRow]){
+	for (int i = numRows; i >= 0; i--) {
+	        for (int j = numBlocksPerRow; j >= 0; j--) {
+	            // Losowanie nowego indeksu
+	            int new_i = HAL_RNG_GetRandomNumber(&hrng) % numRows;
+	            int new_j = HAL_RNG_GetRandomNumber(&hrng) % numBlocksPerRow;
+
+	            // Zamiana elementów
+	            int temp = blocks[i][j];
+	            blocks[i][j] = blocks[new_i][new_j];
+	            blocks[new_i][new_j] = temp;
+	        }
+	    }
+}
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if ((htim == &htim4 && startGame) && level == 1){
 		BallMovement();
@@ -1062,7 +1095,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 			BallMovement();
 		}
 
-  if (htim == &htim3 && ((startGame || initGame) && !overGame)) {
+  if (htim == &htim3 && ((startGame || initGame) && !overGame && !blockPlatform)) {
 
 	  if (JOY1 > 2300 && platform_pos > 0){
 		  PlatformMoveLeft(platform_pos, platform_length);
@@ -1389,13 +1422,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 					}
 				  }
 				  // Rysuj wynik po prawej
-				  LCD_drawVLine(70, 0, 48);
-				  LCD_refreshScr();
-				  LCD_goXY(72, 0);
-				  sprintf(score, "%d", scoreint);
-				  LCD_print(score, 72, 0);
+				  RefreshScore();
 				  numerBloczka = 0;
-				  break;
+			  break;
 
 				  // Rysowanie szachownicy planszy
 	  		case 1:
@@ -1426,16 +1455,24 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 									}
 								}
 							}
+							else{
+								blocks[row][col] = 0; // Widoczny co drugi bloczek
+							}
 						}
 					  }
 					  // Rysuj wynik po prawej
-					  LCD_drawVLine(70, 0, 48);
+					  LCD_drawVLine(70, 0, 48); //narysuj kreske oddzielajacą wynik
 					  LCD_refreshScr();
 					  LCD_goXY(72, 0);
 					  sprintf(score, "%d", scoreint);
 					  LCD_print(score, 72, 0);
 					  numerBloczka = 0;
-					  break;
+			  break;
+			  //Rysowanie losowej planszy
+	  		case 2:
+
+	  			break;
+
 	  		}
 	  		break;
 	  		//Ekran konca gry
@@ -1492,6 +1529,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 				 		plansza = 2;
 				 		temp_screen = 1;
 				 		break;
+					// powrot do menu glownego
 				 	 case 9:
 					 	temp_screen = 1;
 			 		 	break;
@@ -1510,12 +1548,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 				 		 level = 3;
 				 		 temp_screen = 1;
 				 		 break;
+					 // powrot do menu glownego
 				 	 case 13:
 				 		 temp_screen = 1;
 					 	break;
 				 	 case 16:
 					 	temp_screen = 1;
 					 	break;
+					// start gry
 				 	 case 1:
 				 		 temp_screen = 17;
 						 break;
