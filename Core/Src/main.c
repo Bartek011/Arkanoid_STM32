@@ -34,8 +34,10 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define PLATFORM_LVL 47
-#define JOY1 joystick[1]
-#define JOY0 joystick[0]
+#define st_JOY1 joystick1[1]
+#define st_JOY0 joystick1[0]
+#define nd_JOY1 joystick2[1]
+#define nd_JOY0 joystick2[0]
 #define JOYSTICK_DELAY 15
 /* USER CODE END PD */
 
@@ -46,7 +48,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc2;
 DMA_HandleTypeDef hdma_adc1;
+DMA_HandleTypeDef hdma_adc2;
 
 RNG_HandleTypeDef hrng;
 
@@ -59,7 +63,8 @@ TIM_HandleTypeDef htim7;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-uint16_t joystick[2];
+uint16_t joystick1[2];
+uint16_t joystick2[2];
 uint8_t UartMessage[32];
 uint16_t joystick_left = 0;
 uint16_t joystick_right = 0;
@@ -74,8 +79,8 @@ uint8_t licznik = 0;
 // Prostokątne bloczki
 uint8_t blockWidth = 8;
 uint8_t blockHeight = 5;
-uint8_t gap = 4; // Przerwa pomiędzy bloczkami
-uint8_t numBlocksPerRow = 1; //default 7
+uint8_t gap = 2; // Przerwa pomiędzy bloczkami
+uint8_t numBlocksPerRow = 7; //default 7
 uint8_t numRows = 3; //default 3
 uint8_t topOffset = 5; // Odległość od górnej krawędzi ekranu
 uint8_t blocks[3][7]; // Tablica do przechowywania stanu bloczków
@@ -95,6 +100,11 @@ uint8_t bonusHits = 0;	//Licznik uderzen na niestandardowej platformie
 bool flagPlatformLong = false; //flaga czy platforma wydluzona
 bool flagPlatformShort = false; //flaga czy platforma skrocona
 bool blockPlatform = false;
+bool flagShuffle = false; //Flaga czy pilka przekroczyla prog do mieszania tablicy
+bool flagCanBeShuffled = true;
+bool flagPlayer = 0;
+bool flagChangePlayer = false;
+uint8_t posYToChangePlayers = 0;
 //Wynik
 char score[3];
 uint8_t scoreint = 0;
@@ -120,6 +130,7 @@ uint8_t plansza = 0;
 uint8_t randomArray[8];
 uint8_t randomNumber = 0;
 uint8_t level = 1;
+uint8_t players = 1; // Liczba graczy
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -135,6 +146,7 @@ static void MX_TIM2_Init(void);
 static void MX_RNG_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_TIM7_Init(void);
+static void MX_ADC2_Init(void);
 /* USER CODE BEGIN PFP */
 static void PlatformMoveRight(int startPoint, int length);
 static void PlatformMoveLeft(int startPoint, int length);
@@ -144,7 +156,7 @@ static void BallMoveLeftUp(int x, int y);
 static void BallMovement();
 void randomArrayGen();
 static void RefreshScore();
-static void Shuffle(int array[numRows][numBlocksPerRow]);
+static void Shuffle(uint8_t array[numRows][numBlocksPerRow]);
 int __io_putchar(int ch); //debug uart
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim);
@@ -201,10 +213,12 @@ int main(void)
   MX_RNG_Init();
   MX_TIM6_Init();
   MX_TIM7_Init();
+  MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
   //HAL_TIM_Base_Init(&htim3);
   //HAL_TIM_Base_Init(&htim6);
-  HAL_ADC_Start_DMA(&hadc1, joystick, 2);
+  HAL_ADC_Start_DMA(&hadc1, joystick1, 2);
+  HAL_ADC_Start_DMA(&hadc2, joystick2, 2);
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start_IT(&htim4);
@@ -236,6 +250,12 @@ int main(void)
 	  //Odbicia od platformy
 	  if (ball_pos_y + 1 > 45 && (ball_pos_x >= platform_pos && ball_pos_x <= (platform_pos + platform_length))){
 		  ball_dir_y = 1;
+		  flagCanBeShuffled = true;
+		  flagShuffle = false;
+		  if(players == 2){
+			  flagChangePlayer = true;
+			  posYToChangePlayers = ball_pos_y;
+		  }
 		  if (ball_pos_x > (platform_pos + (platform_length/2)))
 			  ball_dir_x = 1;
 		  else if (ball_pos_x <= (platform_pos + (platform_length/2)))
@@ -334,7 +354,6 @@ int main(void)
 					  startGame = false;
 					  blockPlatform = false;
 					  bonusHits = 3;
-					  scoreint = 0;
 					  level = 1;
 					  screen = 20;
 					  temp_screen = 20;
@@ -358,8 +377,6 @@ int main(void)
 			  }
 		  }
 	  }
-
-
 	  // Narysuj inny typ bloczka na ostatnim miescu odbicia
 	  if((!odbicieBloczek && draw_new_block) && !flagNextLevel){
 		  licznik++;
@@ -376,13 +393,17 @@ int main(void)
 				LCD_drawFilledRectangle(last_x_block, last_y_block, last_x_block + blockWidth, last_y_block - blockHeight);
 				break;
 		}
-		  /*for (int i = 0; i < numRows; i++){
+		  for (int i = 0; i < numRows; i++){
 			  for (int j = 0; j < numBlocksPerRow; j++){
 				  printf("%d ", blocks[i][j]);
 			  }
 			  printf("\n");
 		  }
-		  printf("\n \n");*/
+		  printf("\n \n");
+	  }
+	  if(flagChangePlayer && ((posYToChangePlayers - ball_pos_y) != 0)){
+		  flagChangePlayer = false;
+		  flagPlayer = !flagPlayer;
 	  }
 
 	  //Powrot do normalnej platformy po 3 zbiciach
@@ -396,6 +417,41 @@ int main(void)
 			  PlatformExtend(platform_pos);
 		  }
 		  bonusHits = 0;
+	  }
+	  //Sprawdz warunek na mieszanie planszy
+	  if ((plansza == 2 && ball_dir_y == (-1)) && (ball_pos_y == (numRows*(blockHeight+gap)))){
+		  flagShuffle = true;
+	  }
+
+	  if(flagShuffle && flagCanBeShuffled){
+		  flagShuffle = false;
+		  flagCanBeShuffled = false;
+		  Shuffle(blocks);
+		  blockPlatform = true;
+		  for (int row = 0; row < numRows; row++) {
+				for (int col = 0; col < numBlocksPerRow; col++) {
+						//numerBloczka++;
+						int blockX = col * (blockWidth + gap);
+						int blockY = row * (blockHeight + gap) + topOffset;
+						LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+						switch(blocks[row][col]){
+						case 1:
+							LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+							break;
+						case 2:
+							LCD_drawChequeredRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+							break;
+						case 3:
+							LCD_drawFilledRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+							break;
+						case 4:
+							LCD_drawBonusRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+							break;
+						}
+				}
+		  }
+		  //numerBloczka = 0;
+		  blockPlatform = false;
 	  }
 
 
@@ -412,10 +468,6 @@ int main(void)
 		  ball_pos_y = PLATFORM_LVL-2;
 		  LCD_clrScr();
 		  LCD_printGameOver();
-		  /*LCD_printVictory();
-		  sprintf(score, "%d", scoreint);
-		  LCD_print(score, 36, 4);*/
-
 	  }
 
 
@@ -426,10 +478,14 @@ int main(void)
 		  //printf("%d, ",randomArray[i]);
 	  //}
 	  //printf("\t");
-	  //printf("ekran: %d\t licznik: %d\t startGame: %d \t initGame: %d \t overGame: %d \t x: %d \t y: %d \n",screen, licznik, startGame, initGame, overGame, ball_pos_x, ball_pos_y);
+	  //printf("ekran: %d\t licznik: %d\t sstartGame: %d \t initGame: %d \t overGame: %d \t x: %d \t y: %d \n",screen, licznik, startGame, initGame, overGame, ball_pos_x, ball_pos_y);
 	  //printf("przedostatni: %d \t typ: %d \t x: %d \t y: %d \t number: %d \n",przedostatniBloczek, last_level_type_block, last_level_x_block, last_level_y_block, numerBloczkaLevel);
 	  //printf("poz: %d \t length: %d \t flaga: %d\n", platform_pos, platform_length, flagPlatformExtend);
 	  //printf("bonusHits: %d \t flagSHORT: %d \t flagLONG: %d \n", bonusHits, flagPlatformShort, flagPlatformLong);
+	  //printf("dirX: %d \t dirY: %d\n",ball_dir_x, ball_dir_y);
+	  //printf("%d \n",abs(HAL_RNG_GetRandomNumber(&hrng)));
+	  //printf("balX: %d \t ballY: %d \t flagShuffle: %d \t flagCanBeShufled: %d\n", ball_pos_x, ball_pos_y, flagShuffle, flagCanBeShuffled);
+	  printf("1stJOY x: %d \t 1stJOY y: %d \t 2ndJOY x: %d \t 2ndJOY y: %d \t player: %d \n", st_JOY1, st_JOY0, nd_JOY1, nd_JOY0, flagPlayer);
   }
   {
     /* USER CODE END WHILE */
@@ -591,6 +647,73 @@ static void MX_ADC1_Init(void)
 }
 
 /**
+  * @brief ADC2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC2_Init(void)
+{
+
+  /* USER CODE BEGIN ADC2_Init 0 */
+
+  /* USER CODE END ADC2_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC2_Init 1 */
+
+  /* USER CODE END ADC2_Init 1 */
+
+  /** Common config
+  */
+  hadc2.Instance = ADC2;
+  hadc2.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV8;
+  hadc2.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc2.Init.ScanConvMode = ADC_SCAN_ENABLE;
+  hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc2.Init.LowPowerAutoWait = DISABLE;
+  hadc2.Init.ContinuousConvMode = ENABLE;
+  hadc2.Init.NbrOfConversion = 2;
+  hadc2.Init.DiscontinuousConvMode = DISABLE;
+  hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc2.Init.DMAContinuousRequests = ENABLE;
+  hadc2.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+  hadc2.Init.OversamplingMode = DISABLE;
+  if (HAL_ADC_Init(&hadc2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_13;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_14;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
+  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC2_Init 2 */
+
+  /* USER CODE END ADC2_Init 2 */
+
+}
+
+/**
   * @brief RNG Initialization Function
   * @param None
   * @retval None
@@ -682,7 +805,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 7999;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 180; //default 333
+  htim3.Init.Period = 180;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -870,11 +993,15 @@ static void MX_DMA_Init(void)
 
   /* DMA controller clock enable */
   __HAL_RCC_DMA1_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
   /* DMA1_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA2_Channel4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel4_IRQn);
 
 }
 
@@ -922,11 +1049,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : JOYSTICK_BUTTON_Pin */
-  GPIO_InitStruct.Pin = JOYSTICK_BUTTON_Pin;
+  /*Configure GPIO pins : JOYSTICK_BUTTON_Pin JOYSTICK2_BUTTON_Pin */
+  GPIO_InitStruct.Pin = JOYSTICK_BUTTON_Pin|JOYSTICK2_BUTTON_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(JOYSTICK_BUTTON_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 10, 0);
@@ -1070,15 +1197,15 @@ static void RefreshScore(){
 }
 
 //Zmien pozycje bloczkow
-static void Shuffle(int blocks[numRows][numBlocksPerRow]){
-	for (int i = numRows; i >= 0; i--) {
-	        for (int j = numBlocksPerRow; j >= 0; j--) {
+static void Shuffle(uint8_t blocks[numRows][numBlocksPerRow]){
+	for (int i = (numRows-1); i > 0; i--) {
+	        for (int j = (numBlocksPerRow-1); j > 0; j--) {
 	            // Losowanie nowego indeksu
-	            int new_i = HAL_RNG_GetRandomNumber(&hrng) % numRows;
-	            int new_j = HAL_RNG_GetRandomNumber(&hrng) % numBlocksPerRow;
+	            uint8_t new_i = abs(HAL_RNG_GetRandomNumber(&hrng)) % numRows;
+	            uint8_t new_j = abs(HAL_RNG_GetRandomNumber(&hrng)) % numBlocksPerRow;
 
 	            // Zamiana elementów
-	            int temp = blocks[i][j];
+	            uint8_t temp = blocks[i][j];
 	            blocks[i][j] = blocks[new_i][new_j];
 	            blocks[new_i][new_j] = temp;
 	        }
@@ -1096,15 +1223,46 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		}
 
   if (htim == &htim3 && ((startGame || initGame) && !overGame && !blockPlatform)) {
+	  switch(players){
+	  //Ruch platformy dla jednego gracza
+	  case 1:
+		  if (st_JOY1 > 2300 && platform_pos > 0){
+			  PlatformMoveLeft(platform_pos, platform_length);
+			  platform_pos--;
+		  }
+	  	  if (st_JOY1 < 1600 && platform_pos + platform_length < 70){
+	  		  PlatformMoveRight(platform_pos, platform_length);
+	  		  platform_pos++;
+	  	  }
 
-	  if (JOY1 > 2300 && platform_pos > 0){
-		  PlatformMoveLeft(platform_pos, platform_length);
-		  platform_pos--;
+		  break;
+	  //Ruch platformy dla dwoch graczy
+	  case 2:
+		  //Ruch pierwszego gracza
+		  if(flagPlayer == 0){
+			  if (st_JOY1 > 2300 && platform_pos > 0){
+				  PlatformMoveLeft(platform_pos, platform_length);
+				  platform_pos--;
+			  }
+		  	  if (st_JOY1 < 1600 && platform_pos + platform_length < 70){
+		  		  PlatformMoveRight(platform_pos, platform_length);
+		  		  platform_pos++;
+		  	  }
+		  }
+		  //Ruch drugiego gracza
+		  else{
+			  if (nd_JOY1 > 2300 && platform_pos > 0){
+				  PlatformMoveLeft(platform_pos, platform_length);
+				  platform_pos--;
+			  }
+		  	  if (nd_JOY1 < 1600 && platform_pos + platform_length < 70){
+		  		  PlatformMoveRight(platform_pos, platform_length);
+		  		  platform_pos++;
+		  	  }
+		  }
+		  break;
 	  }
-  	  if (JOY1 < 1600 && platform_pos + platform_length < 70){
-  		  PlatformMoveRight(platform_pos, platform_length);
-  		  platform_pos++;
-  	  }
+
   	  if (!startGame){
   		  //Rysowanie pilki przed startem gry
   		  ball_pos_x = platform_pos + (platform_length/2);
@@ -1130,7 +1288,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   	  }
   }
   if (htim == &htim2 && (!initGame && !startGame && !overGame)){
-	  if(JOY0<=1000)
+	  if((st_JOY0<=1000) || (nd_JOY0<=1000))
 	  		{
 	  			switch(temp_screen)
 	  				 {
@@ -1188,7 +1346,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  				 }
 	  				 screen=temp_screen;
 	  		}
-	  	if(JOY0>=3000)
+	  	if((st_JOY0>=3000) || (nd_JOY0>=3000))
 	  	{
 	  		 switch(temp_screen)
 	  			 {
@@ -1430,10 +1588,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  		case 1:
 	  			for (int row = 0; row < numRows; row++) {
 						for (int col = 0; col < numBlocksPerRow; col++) {
+							int blockX = col * (blockWidth + gap);
+							int blockY = row * (blockHeight + gap) + topOffset;
+							LCD_drawEmptyRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 							if((row+col)%2==0){
 								numerBloczka++;
 								blocks[row][col] = 1; // Widoczny co drugi bloczek
-								int blockX = col * (blockWidth + gap);
 								int blockY = row * (blockHeight + gap) + topOffset;
 								LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 
@@ -1470,9 +1630,38 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 			  break;
 			  //Rysowanie losowej planszy
 	  		case 2:
+	  			for (int row = 0; row < numRows; row++) {
+					for (int col = 0; col < numBlocksPerRow; col++) {
+							numerBloczka++;
+							int blockX = col * (blockWidth + gap);
+							int blockY = row * (blockHeight + gap) + topOffset;
 
-	  			break;
+							blocks[row][col] = 1; // Wszystkie bloczki są widoczne na początku
+							LCD_drawRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
 
+							for (int i = 0; i < 8; i++){
+								if(randomArray[i] == numerBloczka){
+									if (randomArray[i]%3==0){
+										blocks[row][col] = 3; // rysuj pelny bloczek
+										LCD_drawFilledRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+									}
+									else if (randomArray[i]%3==1){
+										blocks[row][col] = 2; // rysuj kratkowany bloczek
+										LCD_drawChequeredRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+									}
+									else if(randomArray[i]%3==2){
+										blocks[row][col] = 4; // rysuj bonusowy bloczek
+										LCD_drawBonusRectangle(blockX, blockY, blockX + blockWidth, blockY - blockHeight);
+									}
+									break;
+								}
+							}
+					}
+				  }
+				  // Rysuj wynik po prawej
+				  RefreshScore();
+				  numerBloczka = 0;
+				  break;
 	  		}
 	  		break;
 	  		//Ekran konca gry
@@ -1497,9 +1686,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   }
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-	if(GPIO_Pin == JOYSTICK_BUTTON_Pin){
-		//joystick_flag = true;
-		//printf("%d\n",licznik);
+	if((GPIO_Pin == JOYSTICK_BUTTON_Pin) || (GPIO_Pin == JOYSTICK2_BUTTON_Pin)){
+
 		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
 		//Menu
@@ -1552,6 +1740,16 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 				 	 case 13:
 				 		 temp_screen = 1;
 					 	break;
+					//Wybierz jednego gracza
+				 	 case 14:
+				 		 players = 1;
+				 		 temp_screen = 1;
+				 		 break;
+					 //Wybierz dwoch graczy
+				 	 case 15:
+				 		 players = 2;
+				 		 temp_screen = 1;
+					 //Powrot do menu glownego
 				 	 case 16:
 					 	temp_screen = 1;
 					 	break;
