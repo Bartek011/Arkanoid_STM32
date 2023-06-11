@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <buzzer.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,6 +60,7 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim7;
+TIM_HandleTypeDef htim15;
 
 UART_HandleTypeDef huart2;
 
@@ -131,6 +133,8 @@ uint8_t randomArray[8];
 uint8_t randomNumber = 0;
 uint8_t level = 1;
 uint8_t players = 1; // Liczba graczy
+uint8_t liczbaGier = 0; //Liczba zagranych gier
+uint8_t wyniki[10]; //Tablica do przechowywania wynikow
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -147,6 +151,7 @@ static void MX_RNG_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_TIM7_Init(void);
 static void MX_ADC2_Init(void);
+static void MX_TIM15_Init(void);
 /* USER CODE BEGIN PFP */
 static void PlatformMoveRight(int startPoint, int length);
 static void PlatformMoveLeft(int startPoint, int length);
@@ -157,6 +162,8 @@ static void BallMovement();
 void randomArrayGen();
 static void RefreshScore();
 static void Shuffle(uint8_t array[numRows][numBlocksPerRow]);
+void swap(uint8_t *x, uint8_t *y); //Funkcja zamieniajaca miejscami dwa elementy
+void myQSort(uint8_t arr[], uint8_t size);
 int __io_putchar(int ch); //debug uart
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim);
@@ -214,6 +221,7 @@ int main(void)
   MX_TIM6_Init();
   MX_TIM7_Init();
   MX_ADC2_Init();
+  MX_TIM15_Init();
   /* USER CODE BEGIN 2 */
   //HAL_TIM_Base_Init(&htim3);
   //HAL_TIM_Base_Init(&htim6);
@@ -224,12 +232,17 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim4);
   HAL_TIM_Base_Start_IT(&htim6);
   HAL_TIM_Base_Start_IT(&htim7);
+  BUZZER_Init();
 
   LCD_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  //Wypelnij tablice z wynikami zerami
+  for (uint8_t i = 0; i<10; i++){
+	  wyniki[i] = 0;
+  }
 
   //Generowanie pozycji lepszych bloczkow
   randomArrayGen();
@@ -237,12 +250,22 @@ int main(void)
 
   while (1){
 	  //Odbicia od ścian
-	  if (ball_pos_x + 1 > 68)
+	  if (ball_pos_x + 1 > 68){
 		  ball_dir_x = -1;
-	  else if (ball_pos_x - 1 <= 0)
+		  BUZZER_Go(TBUZ_100, TICK_1);
+	  }
+
+	  else if (ball_pos_x - 1 <= 0){
 		  ball_dir_x = 1;
+		  TBUZ_100, TICK_1;
+	  }
+
 	  if (ball_pos_y - 1 <= 0)
+	  {
 		  ball_dir_y = -1;
+		  BUZZER_Go(TBUZ_100, TICK_1);
+	  }
+
 	  // Odbicie od podłogi -> Koniec gry
 	  if (ball_pos_y + 1 > 46){
 		  flagOverScreen = true;
@@ -252,6 +275,9 @@ int main(void)
 		  ball_dir_y = 1;
 		  flagCanBeShuffled = true;
 		  flagShuffle = false;
+		  if(!initGame && !overGame && startGame){
+			  BUZZER_Go(TBUZ_100, TICK_1);
+		  }
 		  if(players == 2){
 			  flagChangePlayer = true;
 			  posYToChangePlayers = ball_pos_y;
@@ -273,6 +299,7 @@ int main(void)
 	        	  odbicieBloczek  = true;
 	        	  draw_new_block = true;
 	        	  blockPlatform = true;
+	        	  BUZZER_Go(TBUZ_50, TICK_1);
 	        	  if (flagPlatformLong || flagPlatformShort){
 	        		bonusHits++;
 	        	  }
@@ -349,8 +376,12 @@ int main(void)
 				  collapsedBlocks += 1;
 			  }
 			  if (collapsedBlocks == (numRows * numBlocksPerRow)){
+				  wyniki[liczbaGier] = scoreint;
+				  BUZZER_Go(TBUZ_200, TICK_1);
 				  //wygrana
 				  if(level == 3){
+					  //Zapisz wynik
+					  liczbaGier++;
 					  startGame = false;
 					  blockPlatform = false;
 					  bonusHits = 3;
@@ -457,6 +488,9 @@ int main(void)
 
 	  //Wyswietl ekran konca gry
 	  if(flagOverScreen){
+		  BUZZER_Go(TBUZ_1000, TICK_1);
+		  wyniki[liczbaGier] = scoreint;
+		  liczbaGier++;
 		  flagOverScreen = false;
 		  overGame = true;
 		  startGame = false;
@@ -485,7 +519,8 @@ int main(void)
 	  //printf("dirX: %d \t dirY: %d\n",ball_dir_x, ball_dir_y);
 	  //printf("%d \n",abs(HAL_RNG_GetRandomNumber(&hrng)));
 	  //printf("balX: %d \t ballY: %d \t flagShuffle: %d \t flagCanBeShufled: %d\n", ball_pos_x, ball_pos_y, flagShuffle, flagCanBeShuffled);
-	  printf("1stJOY x: %d \t 1stJOY y: %d \t 2ndJOY x: %d \t 2ndJOY y: %d \t player: %d \n", st_JOY1, st_JOY0, nd_JOY1, nd_JOY0, flagPlayer);
+	  //printf("1stJOY x: %d \t 1stJOY y: %d \t 2ndJOY x: %d \t 2ndJOY y: %d \t player: %d \n", st_JOY1, st_JOY0, nd_JOY1, nd_JOY0, flagPlayer);
+	  printf("Liczba gier: %d \n", liczbaGier);
   }
   {
     /* USER CODE END WHILE */
@@ -951,6 +986,81 @@ static void MX_TIM7_Init(void)
 }
 
 /**
+  * @brief TIM15 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM15_Init(void)
+{
+
+  /* USER CODE BEGIN TIM15_Init 0 */
+
+  /* USER CODE END TIM15_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
+  /* USER CODE BEGIN TIM15_Init 1 */
+
+  /* USER CODE END TIM15_Init 1 */
+  htim15.Instance = TIM15;
+  htim15.Init.Prescaler = 39;
+  htim15.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim15.Init.Period = 999;
+  htim15.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim15.Init.RepetitionCounter = 0;
+  htim15.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim15) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim15, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim15) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim15, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim15, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim15, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM15_Init 2 */
+
+  /* USER CODE END TIM15_Init 2 */
+  HAL_TIM_MspPostInit(&htim15);
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -1211,6 +1321,21 @@ static void Shuffle(uint8_t blocks[numRows][numBlocksPerRow]){
 	        }
 	    }
 }
+void swap(uint8_t *x, uint8_t *y){
+	uint8_t temp = *x;
+	*x = *y;
+	*y = temp;
+}
+//Funkcja do sortowania tablicy
+void myQSort(uint8_t arr[], uint8_t size){
+	for(uint8_t i = 0; i < size-1; i++){
+		for(uint8_t j = 0; j < (size - i - 1); j++){
+			if(arr[j] < arr[j+1]){
+				swap(&arr[j], &arr[j+1]);
+			}
+		}
+	}
+}
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if ((htim == &htim4 && startGame) && level == 1){
 		BallMovement();
@@ -1290,6 +1415,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   if (htim == &htim2 && (!initGame && !startGame && !overGame)){
 	  if((st_JOY0<=1000) || (nd_JOY0<=1000))
 	  		{
+		  BUZZER_Go(TBUZ_100, TICK_1);
 	  			switch(temp_screen)
 	  				 {
 	  				case 0:
@@ -1348,6 +1474,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  		}
 	  	if((st_JOY0>=3000) || (nd_JOY0>=3000))
 	  	{
+	  		BUZZER_Go(TBUZ_100, TICK_1);
 	  		 switch(temp_screen)
 	  			 {
 	  			case 1:
@@ -1539,6 +1666,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  	  LCD_invertText(0);
 	  	  break;
 	  	  case 17:
+	  		scoreint = 0;
 	  		initGame = true;
 	  		flagNextLevel = false;
 	  		randomArrayGen();
@@ -1681,13 +1809,48 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  			sprintf(score, "%d", scoreint);
 	  			LCD_print(score, 36, 4);
 	  			break;
+			//Ekran najlepszych wynikow
+	  		case 21:
+	  			LCD_clrScr();
+	  			LCD_print("REKORDY", 20, 0);
+	  			if (wyniki[0] == 0){
+	  				LCD_print("BRAK", 30, 2);
+	  				LCD_print("ROZEGRANYCH",9, 3);
+	  				LCD_print("GIER", 30, 4);
+	  			}
+	  			if(wyniki[0] != 0){
+	  				LCD_print("1st:", 0, 1);
+					sprintf(score, "%d", wyniki[0]);
+					LCD_print(score, 36, 1);
+	  			}
+	  			if(wyniki[1] != 0){
+	  				LCD_print("2nd:", 0, 2);
+					sprintf(score, "%d", wyniki[1]);
+					LCD_print(score, 36, 2);
+	  			}
+	  			if(wyniki[2] != 0){
+	  				LCD_print("3rd:", 0, 3);
+					sprintf(score, "%d", wyniki[2]);
+					LCD_print(score, 36, 3);
+	  			}
+	  			if(wyniki[3] != 0){
+	  				LCD_print("4th:", 0, 4);
+					sprintf(score, "%d", wyniki[3]);
+					LCD_print(score, 36, 4);
+	  			}
+	  			if(wyniki[4] != 0){
+	  				LCD_print("5th:", 0, 5);
+					sprintf(score, "%d", wyniki[4]);
+					LCD_print(score, 36, 5);
+	  			}
+	  			break;
 	  	  	 }
 
   }
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if((GPIO_Pin == JOYSTICK_BUTTON_Pin) || (GPIO_Pin == JOYSTICK2_BUTTON_Pin)){
-
+		BUZZER_Go(TBUZ_100, TICK_1);
 		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
 		//Menu
@@ -1701,6 +1864,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 				 		break;
 				 	case 4:
 				 		temp_screen = 14;
+				 		break;
+					//Wybierz ekran najlepszych wynikow
+				 	case 5:
+				 		myQSort(wyniki, sizeof(wyniki)/sizeof(wyniki[0]));
+				 		temp_screen = 21;
 				 		break;
 				 	// Wybierz plansza pelna, default
 				 	case 6:
@@ -1775,6 +1943,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 					//Ekran wygranej
 				 	case 20:
 				 		temp_screen = 1;
+				 		break;
+					//Ekran najlepszych wynikow
+				 	case 21:
+				 		temp_screen = 1;
+				 		break;
 				 	 }
 				 	screen=temp_screen;
 	}
@@ -1831,6 +2004,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 			 	 }
 			 	screen=temp_screen;
 		 }
+}
+void HAL_SYSTICK_Callback(){
+BUZZER_Handler();
 }
 
 

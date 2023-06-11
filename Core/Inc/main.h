@@ -49,6 +49,8 @@ extern "C" {
 
 /* USER CODE END EM */
 
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
@@ -75,6 +77,8 @@ void Error_Handler(void);
 #define JOYSTICK_BUTTON_Pin GPIO_PIN_7
 #define JOYSTICK_BUTTON_GPIO_Port GPIOA
 #define JOYSTICK_BUTTON_EXTI_IRQn EXTI9_5_IRQn
+#define BUZZER_Pin GPIO_PIN_14
+#define BUZZER_GPIO_Port GPIOB
 #define JOYSTICK2_BUTTON_Pin GPIO_PIN_8
 #define JOYSTICK2_BUTTON_GPIO_Port GPIOA
 #define JOYSTICK2_BUTTON_EXTI_IRQn EXTI9_5_IRQn
