@@ -257,7 +257,7 @@ int main(void)
 
 	  else if (ball_pos_x - 1 <= 0){
 		  ball_dir_x = 1;
-		  TBUZ_100, TICK_1;
+		  BUZZER_Go(TBUZ_100, TICK_1);
 	  }
 
 	  if (ball_pos_y - 1 <= 0)
@@ -1666,7 +1666,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  	  LCD_invertText(0);
 	  	  break;
 	  	  case 17:
-	  		scoreint = 0;
+	  		  if(!flagNextLevel){
+	  			scoreint = 0;
+	  		  }
+
 	  		initGame = true;
 	  		flagNextLevel = false;
 	  		randomArrayGen();
