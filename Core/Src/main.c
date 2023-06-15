@@ -235,6 +235,10 @@ int main(void)
   BUZZER_Init();
 
   LCD_init();
+  for (int i = 0; i<200; i++){
+	  LCD_printLogo();
+  }
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -1531,6 +1535,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  	}
 	  	  switch(screen)
 	  	  	 {
+	  	  case 0:
+	  		  LCD_clrScr();
+	  		  LCD_printLogo();
+	  		  break;
 	  	  	 case 1:
 	  	  LCD_clrScr();
 	  	  LCD_invertText(1);

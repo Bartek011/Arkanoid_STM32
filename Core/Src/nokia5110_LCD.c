@@ -143,6 +143,15 @@ void LCD_printVictory(){
 		  LCD_write(~(VICTORY[i]), LCD_DATA);
 	}
 }
+void LCD_printLogo(){
+	 LCD_goXY(0, 0);
+	for(int i = 0; i < 504; i++){
+		if(lcd.inverttext != true)
+		  LCD_write(LOGO[i], LCD_DATA);
+		else
+		  LCD_write(~(LOGO[i]), LCD_DATA);
+	}
+}
 
 void LCD_printLevelUp(){
 	 LCD_goXY(0, 0);
