@@ -34,6 +34,13 @@ There are special types of blocks that require more knockdowns and bonus blocks 
 
 [schemat.pdf](https://github.com/Bartek011/Arkanoid_STM32/files/12411500/schemat.pdf)
 
+# Housing
+
+Was also created for future 3D printing
+
+<img src="https://i.imgur.com/PWP2c4r.png" alt="real" width="683" height="526" style="display: block; margin: 0 auto;\">
+
+
 
 
 
