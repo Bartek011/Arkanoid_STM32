@@ -38,7 +38,7 @@ There are special types of blocks that require more knockdowns and bonus blocks 
 
 Was also created for future 3D printing
 
-<img src="https://i.imgur.com/PWP2c4r.png" alt="real" width="683" height="526" style="display: block; margin: 0 auto;\">
+<img src="https://i.imgur.com/PWP2c4r.png" alt="real" width="879" height="741" style="display: block; margin: 0 auto;\">
 
 
 
